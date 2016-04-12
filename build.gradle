@@ -1,0 +1,68 @@
+plugins {
+	id "com.jfrog.bintray" version "1.6"
+}
+
+group 'io.cogswell'
+version '1.0.0'
+Properties props = new Properties()
+props.load(new File('settings.gradle').newDataInputStream())
+def packageName =  props.getProperty('rootProject.name').replaceAll("'","")
+
+allprojects {
+	repositories {
+		jcenter()
+	}
+	apply plugin: 'maven'
+	apply plugin: 'maven-publish'
+	apply plugin: 'java'
+}
+
+sourceCompatibility = 1.8
+
+publishing {
+	publications {
+		MyPublication(MavenPublication) {
+			from components.java
+		}
+	}
+}
+
+bintray {
+	user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
+	key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_API_KEY')
+        dryRun = false
+        publish = System.getenv('BINTRAY_PUBLISH')=='true' 
+	publications = ['MyPublication']
+	pkg {
+		repo = 'maven' // always maven
+		name = packageName
+		desc = 'cogswell.io: Cogs Java Client SDK'
+		websiteUrl = 'https://cogswell.io/#'
+		userOrg = user // bintray username
+		licenses = ['Apache-2.0']
+		vcsUrl = 'https://github.com/cogswell-io/cogs-java-client-sdk'
+		labels = ['iot','message broker','big data']
+		publicDownloadNumbers = true
+		version {
+			released = new Date()
+		}
+	}
+        println ''+(dryRun?'DRY RUN':'')+' Publishing '+pkg.userOrg+'/'+pkg.repo+'/'+pkg.name+'/'+version+' NOTE: '+(publish?'This package will be automatically published':'Someone will need to manually publish this package at bintray.com')
+}
+
+dependencies {
+    compile 'org.json:json:20150729'
+    compile 'javax.websocket:javax.websocket-client-api:1.1'
+    compile 'org.glassfish.tyrus:tyrus-client:1.12'
+    compile 'org.glassfish.tyrus:tyrus-container-grizzly-client:1.12'
+}
+
+jar {
+	from {
+		["LICENSE.txt","NOTICE.txt"]
+	}
+}
+
+task wrapper(type: Wrapper) {
+	gradleVersion = '2.12'
+}
