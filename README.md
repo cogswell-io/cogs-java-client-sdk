@@ -45,7 +45,12 @@ cogsService.finish();
 This API route is used send an event to Cogs.
 
 ```java
+import java.util.LinkedHashMap;
 import java.util.concurrent.Future;
+import java.util.concurrent.CancelledException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import com.gambit.sdk.GambitResponse;
 import com.gambit.sdk.request.GambitRequestEvent;
 
 // This should contain the current time in ISO-8601 format.
@@ -98,7 +103,7 @@ try {
 This API route is used to establish a push WebSocket.
 
 ```java
-import java.util.concurrent.Future;
+import java.util.LinkedHashMap;
 import com.gambit.sdk.GambitPushService;
 
 GambitPushService.GambitMessageListener messageListener;
