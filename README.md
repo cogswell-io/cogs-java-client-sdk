@@ -124,27 +124,7 @@ pushBuilder = new GambitPushService.Builder(accessKey, clientSalt, clientSecret)
     .setNamespace(namespace)
     .setAttributes(attributes);
 
+// Start the new push service (WebSocket)
 cogsService.startPushService(pushBuilder);
-
-// Send the event, and receive a Future through which you can handle the outcome
-// of the event delivery attempt.
-Future<GambitResponse> future = cogsService.sendEvent(eventBuilder);
-
-// In this example we are simply blocking until the operation completes, timing
-// out after 15 seconds. If you do no wish to block the calling thread, you will
-// need to either poll for completion (future.isDone()) or block for completion
-// in another thread (Callable in executor service or explicitly managed thread).
-try {
-  GambitResponse response = future.get(15, TimeUnit.SECONDS);
-} catch (CancelledException eCanceled) {
-  // Handle cancellation
-} catch (InterruptedException eInterrupted) {
-  // Handle interruption
-} catch (ExecutionException eExecution) {
-  // Handle execution error
-}
-
-// Shutdown the service when you are done using it.
-cogsService.finish();
 ```
 
