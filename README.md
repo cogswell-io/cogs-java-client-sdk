@@ -57,7 +57,7 @@ import com.gambit.sdk.request.GambitRequestEvent;
 String timestamp;
 
 // The name of the namespace for which the event is destined.
-String namespace
+String namespace;
 
 // This will be sent along with messages so that you can identify the event which
 // "triggered" the message delivery.
