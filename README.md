@@ -1,6 +1,6 @@
 [ ![Download](https://api.bintray.com/packages/cogswell-io/maven/cogs-java-client-sdk/images/download.svg) ](https://bintray.com/cogswell-io/maven/cogs-java-client-sdk/_latestVersion)
 
-## Compile and install the source
+## [Compile and install the source] (#build-details)
 
 Linux:
 ```
