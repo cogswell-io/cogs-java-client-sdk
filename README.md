@@ -21,6 +21,10 @@ You will see the name Gambit throughout our code samples. This was the code name
 
 ### Preparation for using the Client SDK
 
+The Client SDK uses a client secret and salt generated from the access key you generate at the cogswell.io web site.  You can create the secret and salt in either of two ways:
+* Use the Java Test Tool, available at https://cogswell.io/#!/api-docs
+* Use the API directly: https://cogswell.io/docs/api/#!/Client_secret/post_client_secret
+
 ```java
 import com.gambit.sdk.GambitSDKService;
 
