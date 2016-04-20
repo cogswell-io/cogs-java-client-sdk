@@ -1,6 +1,6 @@
 [ ![Download](https://api.bintray.com/packages/cogswell-io/maven/cogs-java-client-sdk/images/download.svg) ](https://bintray.com/cogswell-io/maven/cogs-java-client-sdk/_latestVersion)
 
-## [Import into Proejct] (#import-into-project)
+## [Import into Project] (#import-into-project)
 The Java SDK can either be imported from the .jar files provided or by including the following in a Gradle build file
 ```
 dependencies {
