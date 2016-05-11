@@ -93,7 +93,7 @@ eventBuilder = new GambitRequestEvent.Builder(accessKey, clientSalt, clientSecre
 
 // Send the event, and receive a Future through which you can handle the outcome
 // of the event delivery attempt.
-Future<GambitResponse> future = cogsService.sendEvent(eventBuilder);
+Future<GambitResponse> future = cogsService.sendGambitEvent(eventBuilder);
 
 // In this example we are simply blocking until the operation completes, timing
 // out after 15 seconds. If you do no wish to block the calling thread, you will
@@ -128,6 +128,9 @@ cogsService.setGambitMessageListener(messageListener);
 // The name of the namespace to which the new push service will be bound.
 String namespace;
 
+// A description of the topic.
+String topicDescription;
+
 // The primary key attributes for identifyig the topic to which we are
 // subscribing. The names and types of each attribute should match the
 // namespace schema.
@@ -136,7 +139,7 @@ LinkedHashMap<String, Object> attributes;
 GambitPushService.Builder pushBuilder;
 
 // Assemble the push service definition, but do not build it.
-pushBuilder = new GambitPushService.Builder(accessKey, clientSalt, clientSecret)
+pushBuilder = new GambitPushService.Builder(accessKey, clientSalt, clientSecret, topicDescription)
     .setNamespace(namespace)
     .setAttributes(attributes);
 
