@@ -147,3 +147,168 @@ pushBuilder = new GambitPushService.Builder(accessKey, clientSalt, clientSecret,
 cogsService.startPushService(pushBuilder);
 ```
 
+## [Complete Example] (#complete-example)
+1. Open https://cogswell.io, create and login to an account.
+2. Create and save a namespace called "TestNamespace" with a primary key attribute "email".
+3. Create and save a campaign with "Notification Message" set to "test message" and "Show to:  Whomever triggers this campaign" selected (it will appear as a blue-bordered square when selected.)
+4. Create a client secret and salt (Setup > Client Keys)
+5. Install gradle (https://docs.gradle.org/current/userguide/installation.html) or gradlew (copy gradle/* gradlew and gradlew.bat from this project) in a new directory "CogsJavaExample".
+6. Add the files below to the "CogsJavaExample" directory
+7. Update the namespace, accessKey, clientSecret, clientSalt in HelloCogs.java
+8. Run it: linux/OSX "./gradlew run", Windows "gradlew.bat run"
+
+CogsJavaExample/build.gradle
+```
+apply plugin: 'application'
+repositories {
+    jcenter()
+}
+dependencies {
+    compile 'io.cogswell:cogs-java-client-sdk:1.0.+'
+}
+mainClassName = "HelloCogs"
+```
+CogsJavaExample/src/main/java/HelloCogs.java
+```
+
+import java.util.*;
+import java.text.*;
+import java.util.concurrent.*;
+import com.gambit.sdk.*;
+import com.gambit.sdk.request.GambitRequestEvent;
+import com.gambit.sdk.response.GambitResponseEvent;
+
+class HelloCogs {
+    public static void main(String args[]) {
+        System.out.println("Starting...");
+        HelloCogs c = new HelloCogs();
+
+        // The primary key attributes for identifyig the topic to which we are
+        // subscribing. The names and types of each attribute should match the
+        // namespace schema.
+        LinkedHashMap<String, Object> subscriptionAttributes;
+        subscriptionAttributes = new  LinkedHashMap<String, Object>();
+        subscriptionAttributes.put("email", "abc");
+
+        c.subscribe(subscriptionAttributes);
+
+        // The event attributes whose names and types should match the namespace schema.
+        LinkedHashMap<String, Object> eventAttributes;
+        eventAttributes = new  LinkedHashMap<String, Object>();
+        eventAttributes.put("email", "abc");
+
+        c.sendEvent(eventAttributes);
+    }
+    public HelloCogs() {
+        init();
+    }
+
+    // Hex encoded access-key from one of your api keys in the Web UI.
+    String accessKey;
+
+    // Hex encoded client salt/secret pair acquired from /client_secret endpoint and
+    // associated with above access-key.
+    String clientSecret;
+    String clientSalt;
+
+    GambitSDKService cogsService;
+
+    private void init() {
+        System.out.println("init()");
+
+        // Update these to use your values.
+        namespace = "TestNamespace";
+        accessKey = "********";
+        clientSecret = "********";
+        clientSalt = "********";
+
+        // Create and setup the Cogs SDK service
+        cogsService = GambitSDKService.getInstance();
+    }
+    public void finish() {
+        // Shutdown the service when you are done using it (when your program closes).
+        // You can add this to a shutdown hook if you'd like. It closes all push service
+        // WebSockets for you so you don't need to do so explicitly.
+        cogsService.finish();
+    }
+
+    // This should contain the current time in ISO-8601 format.
+    String timestamp;
+
+    // The name of the namespace for which the event is destined.
+    String namespace;
+
+    // This will be sent along with messages so that you can identify the event which
+    // "triggered" the message delivery.
+    String eventName;
+
+    // The optional ID of the campaign to which this event is responsing. This can
+    // either be omitted or set to -1 for no campaign.
+    Integer campaignId;
+
+    GambitRequestEvent.Builder eventBuilder;
+    public void sendEvent(LinkedHashMap<String, Object> attributes) {
+        System.out.println("sendEvent()");
+
+        TimeZone tz = TimeZone.getTimeZone("UTC");
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+        df.setTimeZone(tz);
+        timestamp = df.format(new Date());
+
+        eventName = "example_event_name";
+        campaignId = -1;
+
+        // Assemble the event, but do not build it.
+        eventBuilder = new GambitRequestEvent.Builder(accessKey, clientSalt, clientSecret)
+                .setTimestamp(timestamp)
+                .setEventName(eventName)
+                .setCampaignId(campaignId)
+                .setNamespace(namespace)
+                .setAttributes(attributes);
+
+        try {
+            // Send the event, and receive a Future through which you can handle the outcome
+            // of the event delivery attempt.
+            Future<GambitResponse> future = cogsService.sendGambitEvent(eventBuilder);
+
+            // In this example we are simply blocking until the operation completes, timing
+            // out after 15 seconds. If you do no wish to block the calling thread, you will
+            // need to either poll for completion (future.isDone()) or block for completion
+            // in another thread (Callable in executor service or explicitly managed thread).
+            //
+            GambitResponseEvent response = (GambitResponseEvent) future.get(15, TimeUnit.SECONDS);
+            System.out.println("sendEvent() GambitResponse: "+response.getRawBody());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    GambitPushService.GambitMessageListener messageListener;
+
+    public void subscribe(LinkedHashMap<String, Object> attributes) {
+
+        // Create the message listener, which handles all incoming messages.
+        messageListener = (builder, message) -> System.out.println("Message: " + message.getRawMessage());
+
+        // Add the message listener to the Cogs service.
+        cogsService.setGambitMessageListener(messageListener);
+
+        // A description of the topic.
+        String topicDescription = "topicDescription";
+
+        GambitPushService.Builder pushBuilder;
+
+        // Assemble the push service definition, but do not build it.
+        pushBuilder = new GambitPushService.Builder(accessKey, clientSalt, clientSecret, topicDescription)
+                .setNamespace(namespace)
+                .setAttributes(attributes);
+
+        // Start the new push service (WebSocket)
+        try {
+            cogsService.startPushService(pushBuilder);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
