@@ -148,16 +148,33 @@ cogsService.startPushService(pushBuilder);
 ```
 
 ## [Complete Example] (#complete-example)
+If you have already completed a step, like creating a cogswell.io account, you may skip it.
 1. Open https://cogswell.io, create and login to an account.
 2. Create and save a namespace called "TestNamespace" with a primary key attribute "email".
 3. Create and save a campaign with "Notification Message" set to "test message" and "Show to:  Whomever triggers this campaign" selected (it will appear as a blue-bordered square when selected.)
 4. Create a client secret and salt (Setup > Client Keys)
-5. Install gradle (https://docs.gradle.org/current/userguide/installation.html) or gradlew (copy gradle/* gradlew and gradlew.bat from this project) in a new directory "CogsJavaExample".
-6. Add the files below to the "CogsJavaExample" directory
-7. Update the namespace, accessKey, clientSecret, clientSalt in HelloCogs.java
-8. Run it: linux/OSX "./gradlew run", Windows "gradlew.bat run"
+5. Create a new directory "CogsJavaExample" for this project.
+6. Install gradle or gradlew:
+  6. gradle: Follow https://docs.gradle.org/current/userguide/installation.html
+  7. gradlew: Copy gradle/* (including all subdirectories and files,) gradlew (for Linux and OSX,) and gradlew.bat (for windows,) from this github repo into your new "CogsJavaExample" directory
+6. Add the files below ("CogsJavaExample/build.gradle" and "CogsJavaExample/src/main/java/HelloCogs.java")
+7. Your files should now have the following structure.  If you are not using gradlew, you will not have the gradle files.
+ 1. CogsJavaExample/
+   2. build.gradle
+   3. gradle/
+     3. wrapper
+       4. gradle-wrapper.jar
+       5. gradle-wrapper.properties
+   2. gradlew
+   3. gradlew.bat
+   4. src/
+     5. main/
+       6. java/
+         7. HelloCogs.java
+8. Update the namespace, accessKey, clientSecret, clientSalt in HelloCogs.java
+9. Run it: linux/OSX "./gradlew run", Windows "gradlew.bat run"
 
-CogsJavaExample/build.gradle
+*`CogsJavaExample/build.gradle`*
 ```
 apply plugin: 'application'
 repositories {
@@ -168,9 +185,8 @@ dependencies {
 }
 mainClassName = "HelloCogs"
 ```
-CogsJavaExample/src/main/java/HelloCogs.java
+*`CogsJavaExample/src/main/java/HelloCogs.java`*
 ```
-
 import java.util.*;
 import java.text.*;
 import java.util.concurrent.*;
