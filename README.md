@@ -155,24 +155,31 @@ If you have already completed a step, like creating a cogswell.io account, you m
 4. Create a client secret and salt (Setup > Client Keys)
 5. Create a new directory "CogsJavaExample" for this project.
 6. Install gradle or gradlew:
-  6. gradle: Follow https://docs.gradle.org/current/userguide/installation.html
-  7. gradlew: Copy gradle/* (including all subdirectories and files,) gradlew (for Linux and OSX,) and gradlew.bat (for windows,) from this github repo into your new "CogsJavaExample" directory
+  1. gradle: Follow https://docs.gradle.org/current/userguide/installation.html
+    1. Make sure you have Java 1.8 or later installed.
+  2. gradlew: Copy gradle/* (including all subdirectories and files,) gradlew (for Linux and OSX,) and gradlew.bat (for windows,) from this github repo into your new "CogsJavaExample" directory
 6. Add the files below ("CogsJavaExample/build.gradle" and "CogsJavaExample/src/main/java/HelloCogs.java")
 7. Your files should now have the following structure.  If you are not using gradlew, you will not have the gradle files.
- 1. CogsJavaExample/
-   2. build.gradle
-   3. gradle/
-     3. wrapper
-       4. gradle-wrapper.jar
-       5. gradle-wrapper.properties
-   2. gradlew
-   3. gradlew.bat
-   4. src/
-     5. main/
-       6. java/
-         7. HelloCogs.java
+  1. CogsJavaExample/
+    1. build.gradle
+    2. gradle/
+      1. wrapper
+        1. gradle-wrapper.jar
+        2. gradle-wrapper.properties
+    3. gradlew
+    4. gradlew.bat
+    5. src/
+      1. main/
+        1. java/
+          1. HelloCogs.java
 8. Update the namespace, accessKey, clientSecret, clientSalt in HelloCogs.java
 9. Run it: linux/OSX "./gradlew run", Windows "gradlew.bat run"
+10. If you get a build error "Unable to locate tools.jar" or you get version or build errors, you may not have your JAVA_HOME set.
+  1. Find the path to java jdk 1.8.  You must use Java 1.8 or later.
+    1. /usr/libexec/java_home -v 1.8
+  2. set the path.  For example:
+    1. export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_91.jdk/Contents/Home
+  3. Re-run the gradle command.
 
 *`CogsJavaExample/build.gradle`*
 ```
