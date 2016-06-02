@@ -149,16 +149,19 @@ cogsService.startPushService(pushBuilder);
 
 ## [Complete Example] (#complete-example)
 If you have already completed a step, like creating a cogswell.io account, you may skip it.
+
 1. Open https://cogswell.io, create and login to an account.
 2. Create and save a namespace called "TestNamespace" with a primary key attribute "email".
 3. Create and save a campaign with "Notification Message" set to "test message" and "Show to:  Whomever triggers this campaign" selected (it will appear as a blue-bordered square when selected.)
-4. Create a client secret and salt (Setup > Client Keys)
+4. Create a client secret and salt (Setup > Client Keys.)
 5. Create a new directory "CogsJavaExample" for this project.
 6. Install gradle or gradlew:
   1. gradle: Follow https://docs.gradle.org/current/userguide/installation.html
     1. Make sure you have Java 1.8 or later installed.
-  2. gradlew: Copy gradle/* (including all subdirectories and files,) gradlew (for Linux and OSX,) and gradlew.bat (for windows,) from this github repo into your new "CogsJavaExample" directory
-6. Add the files below ("CogsJavaExample/build.gradle" and "CogsJavaExample/src/main/java/HelloCogs.java")
+  2. gradlew: 
+    1. Get a copy o this or any other repositiory that uses gradle
+    2. Copy gradle/* (including all subdirectories and files,) gradlew (for Linux and OSX,) and gradlew.bat (for windows,) from this github repo into your new "CogsJavaExample" directory.
+6. Add the files below ("CogsJavaExample/build.gradle" and "CogsJavaExample/src/main/java/HelloCogs.java".)
 7. Your files should now have the following structure.  If you are not using gradlew, you will not have the gradle files.
   1. CogsJavaExample/
     1. build.gradle
