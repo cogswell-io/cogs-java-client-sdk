@@ -98,17 +98,32 @@ public class GambitRequestEvent extends GambitRequest {
         }
 
         /**
-         * Gets the timestamp of the event. Use ISO-8601 format.
-         * @return The timestamp of the event.
+         * Gets the security timestamp of the event (ISO-8601 format).
+         *
+         * @return The security timestamp of the event.
          */
         public String getTimestamp() {
             return mTimestamp;
         }
 
         /**
-         * Sets the timestamp of the event. Use ISO-8601 format.
+         * <p>
+         * Overwrite the security timestamp of the event (current time by default).
+         * This must be an ISO-8601 formatted timestamp, yyyy-MM-dd'T'HH:mm:ss.SSSXXX
+         * </p>
+         *
+         * <p>
+         * Examples:
+         * <ul>
+         *     <li>2016-07-01T09:36:42.520-06:00</li>
+         *     <li>2016-07-01T09:36:42.520Z</li>
+         *     <li>2016-07-01T09:36:42+04:00</li>
+         * </ul>
+         * </p>
+         *
          * @param timestamp The timestamp of the event.
-         * @return The same instance
+         *
+         * @return this Builder
          */
         public Builder setTimestamp(String timestamp) {
             this.mTimestamp = timestamp;
@@ -337,11 +352,6 @@ public class GambitRequestEvent extends GambitRequest {
                 } catch (IllegalArgumentException e) {
                     throw new Exception("Invalid format for event timestamp.", e);
                 }
-            }
-
-            if (mTimestamp == null || mTimestamp.isEmpty()) {
-                mTimestamp
-                throw new Exception("Missing mandatory parameter of Builder: timestamp");
             }
         }
     }
