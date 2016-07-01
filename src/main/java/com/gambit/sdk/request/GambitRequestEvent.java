@@ -6,12 +6,14 @@ import com.gambit.sdk.exceptions.CogsException;
 import com.gambit.sdk.response.GambitResponseEvent;
 import org.json.JSONObject;
 
+import javax.xml.bind.DatatypeConverter;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -327,7 +329,18 @@ public class GambitRequestEvent extends GambitRequest {
                 throw new Exception("Missing mandatory parameter of Builder: namespace");
             }
 
+            if (mTimestamp == null) {
+                mTimestamp = DatatypeConverter.printDateTime(new GregorianCalendar());
+            } else {
+                try {
+                    DatatypeConverter.parseDateTime(mTimestamp);
+                } catch (IllegalArgumentException e) {
+                    throw new Exception("Invalid format for event timestamp.", e);
+                }
+            }
+
             if (mTimestamp == null || mTimestamp.isEmpty()) {
+                mTimestamp
                 throw new Exception("Missing mandatory parameter of Builder: timestamp");
             }
         }
