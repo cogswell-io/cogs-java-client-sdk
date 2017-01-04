@@ -55,6 +55,7 @@ dependencies {
     compile 'javax.websocket:javax.websocket-client-api:1.1'
     compile 'org.glassfish.tyrus:tyrus-client:1.12'
     compile 'org.glassfish.tyrus:tyrus-container-grizzly-client:1.12'
+    compile group: 'javax', name: 'javaee-api', version: '7.0'
 }
 
 jar {
