@@ -15,6 +15,7 @@ allprojects {
 	apply plugin: 'maven'
 	apply plugin: 'maven-publish'
 	apply plugin: 'java'
+	apply plugin: 'application'
 }
 
 sourceCompatibility = 1.8
@@ -67,3 +68,5 @@ jar {
 task wrapper(type: Wrapper) {
 	gradleVersion = '2.12'
 }
+
+mainClassName = "tests.pubsub.HelloCogs"
