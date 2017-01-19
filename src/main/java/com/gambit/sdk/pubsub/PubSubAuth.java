@@ -25,13 +25,19 @@ public class PubSubAuth
     public PubSubAuth(List<String> keys)
         throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException  
     {
-        generatePayload(keys);
+        this(keys, null);
+    }
+
+    public PubSubAuth(List<String> keys, UUID session)
+        throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException 
+    {
+        generatePayload(keys, session);
     }
 
     public String getPayload() { return payload; }
     public String getHmac() { return payloadHmac; }
 
-    private void generatePayload(List<String> keys)
+    private void generatePayload(List<String> keys, UUID session)
         throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException
     {
         List<String[]> splitKeys = keys.stream()
@@ -50,6 +56,10 @@ public class PubSubAuth
             .put("identity", identity)
             .put("permissions", permissions)
             .put("security_timestamp", timestamp);
+
+        if(session != null) {
+            payload.put("uuid", session.toString());
+        }
 
         byte[] utf8Payload = payload.toString().getBytes("UTF-8");
         String base64Payload = DatatypeConverter.printBase64Binary(utf8Payload);

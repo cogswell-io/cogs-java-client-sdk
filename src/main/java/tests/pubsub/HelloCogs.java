@@ -41,17 +41,23 @@ class HelloCogs {
 
         ///////////////////////////////////////////////////////
 
+        UUID session = UUID.fromString("8e404b70-dd96-11e6-aa81-194db86f61d4");
+
         TestKeyServer keyServer = new TestKeyServer("http://localhost:8778");
+        //PubSubOptions opts = new PubSubOptions("ws://localhost:8888", false, 30000, session);
         PubSubSDK pubsub = PubSubSDK.getInstance();
 
         keyServer.createKey(key)
             .thenComposeAsync((result) -> {
                 System.out.println("CREATED A KEY");
-                System.out.println(result.getRawBody());
                 return pubsub.connect(permissionKeys);
             })
-            .thenComposeAsync((result) -> {
+            .thenComposeAsync((handle) -> {
                 System.out.println("CONNECTED TO PUB/SUB");
+                return handle.getSessionUuid();
+            })
+            .thenComposeAsync((uuid) -> {
+                System.out.println("HAVE GOTTEN UUID: " + uuid.toString());
                 return keyServer.deleteKey(ident);
             })
             .thenComposeAsync((result) -> {
@@ -59,6 +65,8 @@ class HelloCogs {
                 return CompletableFuture.completedFuture(result); 
             })
             .exceptionally((err) -> {
+                System.out.println("THERE WAS SOME KIND OF EXCEPTION");
+                System.out.println("Type: " + err.getMessage());
                 return null;
             });
         

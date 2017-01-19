@@ -1,5 +1,5 @@
 package com.gabmit.sdk.pubsub.handlers;
 
-public interface RawRecordHandler {
+public interface PubSubRawRecordHandler {
     void onRawRecord(String rawRecord);
 }

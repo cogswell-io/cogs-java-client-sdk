@@ -8,8 +8,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.List;
 
-import java.net.URI;
-
 public class PubSubSDK {
     private static PubSubSDK instance;
 
@@ -34,27 +32,16 @@ public class PubSubSDK {
     {
         CompletableFuture promise = CompletableFuture.supplyAsync(() -> {
             try {
-                PubSubOptions opts = options;
-
                 PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys);
-                PubSubSocket sock = new PubSubSocket();
+                PubSubOptions opts = (options == null) ? options : new PubSubOptions();
 
-                ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
-                WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+                PubSubSocket socket = new PubSubSocket(configurator, options);
+                PubSubHandle handle = new PubSubHandle(socket);
 
-                if(container == null) {
-                    throw new CompletionException(new Exception("There was no socket container implementation found."));
-                }
-                else {
-                    System.out.println(":: BEFORE CONNECTION TO SOCKET");
-                    container.connectToServer(sock, config, URI.create(opts.getUrl()));
-                    System.out.println(":: AFTER CONNECTION TO SOCKET");
-                }
-
-                return null;
+                return handle;
             }
             catch(Exception e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(e);
             }
         });
 

@@ -2,6 +2,6 @@ package com.gabmit.sdk.pubsub.handlers;
 
 import java.util.UUID;
 
-public interface NewSessionHandler {
+public interface PubSubNewSessionHandler {
     void onNewSession(UUID uuid);
 }

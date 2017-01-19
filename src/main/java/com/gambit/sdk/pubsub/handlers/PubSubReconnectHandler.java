@@ -1,5 +1,5 @@
 package com.gabmit.sdk.pubsub.handlers;
 
-public interface ReconnectHandler {
+public interface PubSubReconnectHandler {
     void onReconnect();
 }

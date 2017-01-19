@@ -10,8 +10,6 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
 
     public PubSubSocketConfigurator(List<String> projectKeys) {
         try {
-            System.out.println(":: MY ENDPOINT CONFIG CONSTRUCTION");
-            
             PubSubAuth auth = new PubSubAuth(projectKeys);
             payload = auth.getPayload();
             payloadHmac = auth.getHmac();
@@ -25,8 +23,5 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
     public void beforeRequest(Map<String, List<String>> headers) {
         headers.put("Payload", Collections.singletonList(payload));
         headers.put("PayloadHMAC", Collections.singletonList(payloadHmac));
-        
-        System.out.println(":: BEFORE SENDING REQUEST");
-        System.out.println(headers);
     }
 }
