@@ -1,5 +1,8 @@
-package com.gabmit.sdk.pubsub.handlers;
+package com.gambit.sdk.pubsub.handlers;
 
+import com.gambit.sdk.pubsub.PubSubMessageRecord;
+
+@FunctionalInterface
 public interface PubSubMessageHandler {
-    void onMessage(String channel, String message);
+    void onMessage(PubSubMessageRecord record);
 }

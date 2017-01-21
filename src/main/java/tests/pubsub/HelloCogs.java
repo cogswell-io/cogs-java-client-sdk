@@ -12,10 +12,13 @@ import org.json.JSONObject;
 import java.net.*;
 import java.io.*;
 
+import com.gambit.sdk.pubsub.handlers.*;
 import com.gambit.sdk.pubsub.*;
 import javax.websocket.*;
 
 class HelloCogs {
+    public static PubSubHandle handle = null;
+
     public static void main(String args[]) {
         ////////////////////////////////////////////////////////
 
@@ -23,11 +26,6 @@ class HelloCogs {
         String write = "beef";
         String admin = "deadbeef";
         String ident = "600D";
-
-        List<String> permissionKeys = new Vector<>();
-        permissionKeys.add(String.format("R-%s-%s", ident, read));
-        permissionKeys.add(String.format("W-%s-%s", ident, write));
-        permissionKeys.add(String.format("A-%s-%s", ident, admin));
 
         JSONObject key = new JSONObject()
             .put("identity", ident)
@@ -37,7 +35,11 @@ class HelloCogs {
             .put("key_id", 1)
             .put("project_id", 1235)
             .put("customer_id", 1)
-            .put("enabled", true);
+            .put("enabled", true);//*/
+
+        //JSONObject key = getRandomProjectKey();
+
+        List<String> permissionKeys = buildPermissionKeys(key);
 
         ///////////////////////////////////////////////////////
 
@@ -47,31 +49,47 @@ class HelloCogs {
         //PubSubOptions opts = new PubSubOptions("ws://localhost:8888", false, 30000, session);
         PubSubSDK pubsub = PubSubSDK.getInstance();
 
+        String chan = "A-GOOD-CHANNEL";
+
+        CompletableFuture<String> end = new CompletableFuture<>();
+
         keyServer.createKey(key)
             .thenComposeAsync((result) -> {
-                System.out.println("CREATED A KEY");
                 return pubsub.connect(permissionKeys);
             })
-            .thenComposeAsync((handle) -> {
-                System.out.println("CONNECTED TO PUB/SUB");
-                return handle.getSessionUuid();
+            .thenComposeAsync((h) -> {
+                handle = h;
+
+                return h.subscribe(chan, new PubSubMessageHandler() {
+                    @Override
+                    public void onMessage(PubSubMessageRecord record) {
+                        System.out.println("This was received from the handler...");
+                        System.out.println(record.getMessage());
+                    }
+                });
             })
-            .thenComposeAsync((uuid) -> {
-                System.out.println("HAVE GOTTEN UUID: " + uuid.toString());
+            .thenComposeAsync((chans) -> {
+                System.out.println("CHANNELS: " + chans);
                 return keyServer.deleteKey(ident);
             })
-            .thenComposeAsync((result) -> {
-                System.out.println("DELETED A KEY");
-                return CompletableFuture.completedFuture(result); 
+            .thenComposeAsync((response) -> {
+                end.complete("DONE");
+                return end;
             })
             .exceptionally((err) -> {
                 System.out.println("THERE WAS SOME KIND OF EXCEPTION");
                 System.out.println("Type: " + err.getMessage());
                 return null;
             });
-        
-        System.out.println("THERE IS ASYNCHRONOUS CODE IN THIS RUNNING PROGRAM...");
-        ForkJoinPool.commonPool().awaitQuiescence(2, TimeUnit.MINUTES);
+
+        /*try {
+            ForkJoinPool.commonPool().awaitTermination(2, TimeUnit.MINUTES);
+        }
+        catch(InterruptedException e) {
+            System.out.println("INTERRUPTED WHILE WAITING");
+        }*/
+
+        ForkJoinPool.commonPool().awaitTermination(2, TimeUnit.MINUTES);
     }
 
     private static JSONObject getRandomProjectKey() {
@@ -83,11 +101,12 @@ class HelloCogs {
         String admin = Integer.toHexString(rand.nextInt());
 
         JSONObject key = new JSONObject()
-                .put("key_id", ident)
+                .put("identity", ident)
                 .put("read_key", read)
                 .put("write_key", write)
                 .put("admin_key", admin)
-                .put("project_id", ident)
+                .put("key_id", 1)
+                .put("project_id", 1)
                 .put("customer_id", 1)
                 .put("enabled", true);
 
@@ -97,7 +116,7 @@ class HelloCogs {
     private static List<String> buildPermissionKeys(JSONObject key) {
         List<String> permissions = new Vector<>();
 
-        String ident = key.getString("key_id");
+        String ident = key.getString("identity");
         String read = key.getString("read_key");
         String write = key.getString("write_key");
         String admin = key.getString("admin_key");

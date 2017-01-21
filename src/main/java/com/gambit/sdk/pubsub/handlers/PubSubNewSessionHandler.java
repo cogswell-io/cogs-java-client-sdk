@@ -1,4 +1,4 @@
-package com.gabmit.sdk.pubsub.handlers;
+package com.gambit.sdk.pubsub.handlers;
 
 import java.util.UUID;
 
