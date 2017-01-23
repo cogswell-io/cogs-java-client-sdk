@@ -42,6 +42,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
     public void connect() throws DeploymentException, IOException
     {
+        // TODO: make async
         ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
@@ -68,10 +69,11 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             }
         });
 
-        return result.whenCompleteAsync((res, err) -> {
+        System.out.println(outstanding.toString());
+        return result/*.whenCompleteAsync((res, err) -> {
             if(res != null) System.out.println("RESULT: " + res.toString());
             if(err != null) System.out.println("ERROR: " + err.toString());
-        });
+        })*/;
     }
 
     public void addMessageHandler(String channel, PubSubMessageHandler handler) {
@@ -102,7 +104,10 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         //System.out.println("\t" + message);
 
         long seq = json.getLong("seq");
-        CompletableFuture f = outstanding.get(seq);
+        CompletableFuture f;// = outstanding.get(seq);
+        synchronized (outstanding) {
+            f = outstanding.get(seq);
+        }
         System.out.println("Got Sequence: " + seq);
         System.out.println("Got Future: " + f);
 

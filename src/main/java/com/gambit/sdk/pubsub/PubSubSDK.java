@@ -30,7 +30,7 @@ public class PubSubSDK {
 
     public CompletableFuture<PubSubHandle> connect(List<String> projectKeys, PubSubOptions options)
     {
-        CompletableFuture promise = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture future = CompletableFuture.supplyAsync(() -> {
             try {
                 PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys);
                 PubSubOptions opts = (options == null) ? options : new PubSubOptions();
@@ -45,6 +45,6 @@ public class PubSubSDK {
             }
         });
 
-       return promise;
+       return future;
     }
 }

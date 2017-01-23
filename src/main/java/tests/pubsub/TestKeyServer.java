@@ -50,6 +50,7 @@ public class TestKeyServer
     private GambitResponse send(String method, URL url, String message)
         throws IOException, ProtocolException, UnsupportedEncodingException 
     {
+        // TODO: make asyncrhonous
         HttpURLConnection connection = (HttpURLConnection)url.openConnection();
 
         connection.setDoInput(true);

@@ -54,7 +54,6 @@ public class PubSubHandle {
 
     public CompletableFuture<List<String>> subscribe(String channel, PubSubMessageHandler messageHandler) {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
-
         long seq = sequence.getAndIncrement();
 
         JSONObject request = new JSONObject()

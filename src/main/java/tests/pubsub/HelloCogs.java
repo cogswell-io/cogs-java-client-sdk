@@ -60,7 +60,7 @@ class HelloCogs {
             .thenComposeAsync((h) -> {
                 handle = h;
 
-                return h.subscribe(chan, new PubSubMessageHandler() {
+                return handle.subscribe(chan, new PubSubMessageHandler() {
                     @Override
                     public void onMessage(PubSubMessageRecord record) {
                         System.out.println("This was received from the handler...");
@@ -82,14 +82,13 @@ class HelloCogs {
                 return null;
             });
 
-        /*try {
+        try {
             ForkJoinPool.commonPool().awaitTermination(2, TimeUnit.MINUTES);
+            Thread.sleep(2000);
         }
         catch(InterruptedException e) {
             System.out.println("INTERRUPTED WHILE WAITING");
-        }*/
-
-        ForkJoinPool.commonPool().awaitTermination(2, TimeUnit.MINUTES);
+        }//*/
     }
 
     private static JSONObject getRandomProjectKey() {
