@@ -17,78 +17,63 @@ import com.gambit.sdk.pubsub.*;
 import javax.websocket.*;
 
 class HelloCogs {
-    public static PubSubHandle handle = null;
+    public static PubSubHandle pubsubHandle;
 
     public static void main(String args[]) {
-        ////////////////////////////////////////////////////////
-
-        String read = "dead";
-        String write = "beef";
-        String admin = "deadbeef";
-        String ident = "600D";
-
-        JSONObject key = new JSONObject()
-            .put("identity", ident)
-            .put("read_key", read)
-            .put("write_key", write)
-            .put("admin_key", admin)
-            .put("key_id", 1)
-            .put("project_id", 1235)
-            .put("customer_id", 1)
-            .put("enabled", true);//*/
-
-        //JSONObject key = getRandomProjectKey();
-
-        List<String> permissionKeys = buildPermissionKeys(key);
-
-        ///////////////////////////////////////////////////////
-
-        UUID session = UUID.fromString("8e404b70-dd96-11e6-aa81-194db86f61d4");
-
         TestKeyServer keyServer = new TestKeyServer("http://localhost:8778");
-        //PubSubOptions opts = new PubSubOptions("ws://localhost:8888", false, 30000, session);
         PubSubSDK pubsub = PubSubSDK.getInstance();
 
-        String chan = "A-GOOD-CHANNEL";
+        JSONObject key = getRandomProjectKey();
+        String ident = key.getString("identity");
+        List<String> permissionKeys = buildPermissionKeys(key);
 
-        CompletableFuture<String> end = new CompletableFuture<>();
+        CountDownLatch signal = new CountDownLatch(1);
+        String testChan = "BASEBALL & SPORTS";
 
         keyServer.createKey(key)
             .thenComposeAsync((result) -> {
+                System.out.println("AFTER CREATING KEY: " + result);
                 return pubsub.connect(permissionKeys);
             })
-            .thenComposeAsync((h) -> {
-                handle = h;
-
-                return handle.subscribe(chan, new PubSubMessageHandler() {
+            .thenComposeAsync((handle) -> {
+                System.out.println("AFTER A CONNECTION: " + handle);
+                pubsubHandle = handle;
+                return pubsubHandle.subscribe(testChan, new PubSubMessageHandler() {
                     @Override
                     public void onMessage(PubSubMessageRecord record) {
-                        System.out.println("This was received from the handler...");
-                        System.out.println(record.getMessage());
+                        System.out.println("ThIs WaS CaLleD: " + record.getMessage());
                     }
                 });
             })
             .thenComposeAsync((chans) -> {
-                System.out.println("CHANNELS: " + chans);
+                System.out.println("AFTER SUBSCRIPTION: " + chans);
+                pubsubHandle.publish(testChan, "Good Message");
+                pubsubHandle.publish(testChan, "Some Message");
+                return pubsubHandle.publish(testChan, "Good Grief");
+            })
+            .thenComposeAsync((sequence) -> {
+                System.out.println("AFTER A PUBLISHING: " + sequence);
+                return pubsubHandle.close();
+            })
+            .thenComposeAsync((result) -> {
+                System.out.println("AFTER SOCK CLOSING: " + result);
                 return keyServer.deleteKey(ident);
             })
-            .thenComposeAsync((response) -> {
-                end.complete("DONE");
-                return end;
+            .thenAcceptAsync((result) -> {
+                System.out.println("AFTER DELETING KEY: " + result);
+                signal.countDown();
             })
-            .exceptionally((err) -> {
-                System.out.println("THERE WAS SOME KIND OF EXCEPTION");
-                System.out.println("Type: " + err.getMessage());
+            .exceptionally((error) -> {
+                System.out.println("THERE WAS AN ERROR: " + error);
                 return null;
             });
 
         try {
-            ForkJoinPool.commonPool().awaitTermination(2, TimeUnit.MINUTES);
-            Thread.sleep(2000);
+            signal.await();
         }
         catch(InterruptedException e) {
-            System.out.println("INTERRUPTED WHILE WAITING");
-        }//*/
+            System.out.println("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+        }
     }
 
     private static JSONObject getRandomProjectKey() {
@@ -98,6 +83,11 @@ class HelloCogs {
         String read = Integer.toHexString(rand.nextInt());
         String write = Integer.toHexString(rand.nextInt());
         String admin = Integer.toHexString(rand.nextInt());
+
+        if(ident.length() % 2 != 0) { ident += "f"; }
+        if(read.length() % 2 != 0) { read += "f"; }
+        if(write.length() % 2 != 0) { write += "f"; }
+        if(admin.length() % 2 != 0) { admin += "f"; }
 
         JSONObject key = new JSONObject()
                 .put("identity", ident)

@@ -59,7 +59,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         }
     }
 
-    public CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json) {
+    public CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json)
+    {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         outstanding.put(sequence, result);
         
@@ -69,15 +70,23 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             }
         });
 
-        System.out.println(outstanding.toString());
-        return result/*.whenCompleteAsync((res, err) -> {
-            if(res != null) System.out.println("RESULT: " + res.toString());
-            if(err != null) System.out.println("ERROR: " + err.toString());
-        })*/;
+        return result;
+    }
+
+    public CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json, SendHandler handler) {
+        CompletableFuture<JSONObject> result = new CompletableFuture<>();
+        result.complete(json);
+
+        server.sendText(json.toString(), handler);
+        return result;
     }
 
     public void addMessageHandler(String channel, PubSubMessageHandler handler) {
         msgHandlers.put(channel, handler);
+    }
+
+    public void close() throws IOException {
+        session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Closing by Choice"));
     }
 
     ///////////////////// EXTENDING ENDPOINT AND IMPLEMENTING MESSAGE_HANDLER /////////////////////////////////// 
@@ -89,41 +98,31 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
     @Override
     public void onClose(Session session, CloseReason closeReason) {
-
     }
 
     @Override
     public void onError(Session session, Throwable throwable) {
-
     }
 
     @Override
     public void onMessage(String message) {
         JSONObject json = new JSONObject(message);
-        System.out.println("RECEIVED FROM SERVER: ");
+        //System.out.println("RECEIVED FROM SERVER: ");
         //System.out.println("\t" + message);
 
-        long seq = json.getLong("seq");
-        CompletableFuture f;// = outstanding.get(seq);
-        synchronized (outstanding) {
-            f = outstanding.get(seq);
-        }
-        System.out.println("Got Sequence: " + seq);
-        System.out.println("Got Future: " + f);
-
-        /*if(json.getString("action").equals("msg")) {
-            System.out.println("BLAH, BLAH, BLAH");
-
-            String channel = json.getString("chan");
-            String msg = json.getString("msg");
-            String timestamp = json.getString("timestamp");
+        if(json.getString("action").equals("msg")) {
             String id = json.getString("id");
+            String msg = json.getString("msg");
+            String time = json.getString("time");
+            String chan = json.getString("chan");
 
-            PubSubMessageRecord record = new PubSubMessageRecord(channel, msg, timestamp, id);
-            msgHandlers.get(channel).onMessage(record);
-        }*/
-        //else {
-            f.complete(json);
-        //}
+            PubSubMessageRecord record = new PubSubMessageRecord(chan, msg, time, id);
+            PubSubMessageHandler handler = msgHandlers.get(chan);
+            handler.onMessage(record);
+        }
+        else {
+            long seq = json.getLong("seq");
+            outstanding.get(seq).complete(json);
+        }
     }
 }

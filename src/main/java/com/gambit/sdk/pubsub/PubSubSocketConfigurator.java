@@ -15,8 +15,9 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
             payloadHmac = auth.getHmac();
         }
         catch(Exception e) {
-            System.out.println(":: COULD NOT CONVERT THINGS");
-        }
+            System.out.println(":: COULD NOT CONVERT THINGS: " + e.getMessage());
+            e.printStackTrace();
+        } 
     }
 
     @Override
