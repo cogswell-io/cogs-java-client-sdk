@@ -32,7 +32,7 @@ public class PubSubOptions {
      */
     public PubSubOptions() {
       // For Debugging
-      this("ws://localhost:8888", false, 30000, null);
+      this("ws://localhost:8888", false, 30000L, null);
       
       //this("wss://api.cogswell.io/pubsub", true, 30000, null);
     }
@@ -44,7 +44,7 @@ public class PubSubOptions {
      * @param connectTimeout The amount of time, in milliseconds, before a connection should timeout
      * @param sessionUuid The uuid of the session to be restored 
      */
-    public PubSubOptions(String url, boolean autoReconnect, long connectTimeout, UUID sessionUuid) {
+    public PubSubOptions(String url, Boolean autoReconnect, Long connectTimeout, UUID sessionUuid) {
       this.url = (url == null) ? "ws://localhost:8888" : url;
       this.autoReconnect = (autoReconnect == null) ? false : autoReconnect;
       this.connectTimeout = (connectTimeout == null) ? 30000 : connectTimeout;

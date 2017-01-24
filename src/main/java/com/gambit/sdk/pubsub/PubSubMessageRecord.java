@@ -35,8 +35,7 @@ public class PubSubMessageRecord
      * @param timestamp The ISO_INSTANT formatted string representing the time the Pub/Sub message was published
      * @param id The UUID formatted string representing the UUID of the message to be published 
      */
-    public PubSubMessageRecord(String channel, String message, String timestamp, String id)
-    {
+    public PubSubMessageRecord(String channel, String message, String timestamp, String id) {
         this.channel = channel;
         this.message = message;
 
@@ -48,23 +47,31 @@ public class PubSubMessageRecord
      * Returns the channel stored by this PubSubMessageRecord
      * @return String
      */
-    public String getChannel() { return channel; }
+    public String getChannel() { 
+        return channel; 
+    }
 
     /**
      * Returns the message content from the original Pub/Sub message stored by this PubSubMessageRecord
      * @return String
      */
-    public String getMessage() { return message; }
+    public String getMessage() { 
+        return message; 
+    }
 
     /**
      * Returns the timestamp from the original Pub/Sub message stored by this PubSubMessageRecord
      * @return java.time.Instant
      */
-    public Instant getTimestamp() { return timestamp; }
+    public Instant getTimestamp() { 
+        return timestamp; 
+    }
 
     /**
      * Returns the UUID of the original Pub/Sub message stored by this PubSubMessageRecord
      * @return java.util.UUID 
      */
-    public UUID getId() { return id; }
+    public UUID getId() { 
+        return id; 
+    }
 }

@@ -72,27 +72,22 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     }
 
     /**
-     * Initiates the connection the the Pub/Sub server with the configuration for this PubSubSocket
-     * @throws DeploymentException
+     * Associates a {@link PubSubMessageHandler} to call for message received from the given channel.
+     * @param channel The channel with which to associate the given handler
+     * @param handler The {@link PubSubMessageHandler} that will be called for message from the given channel.
+     */
+    public void addMessageHandler(String channel, PubSubMessageHandler handler) {
+        msgHandlers.put(channel, handler);
+    }
+
+    /**
+     * Closes the connection represented by this PubSubSocket
      * @throws IOException
      */
-    private void connect() throws DeploymentException, IOException
+    public void close() 
+        throws IOException 
     {
-        // TODO: make async
-        ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
-        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-
-        if(container != null) {
-            session = container.connectToServer(this, config, URI.create(options.getUrl()));
-            server = session.getAsyncRemote();
-        }
-        else {
-            throw new RuntimeException("There was no socket container implementation found.");
-        }
-
-        if(session == null) {
-            throw new RuntimeException("Could not instantiate connection to server.");
-        }
+        session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Closing by Choice"));
     }
 
     /**
@@ -103,8 +98,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param json The request to send to the Pub/Sub server
      * @return CompletableFuture<JSONObject> future that will contain server response to given request
      */
-    public CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json)
-    {
+    protected CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         outstanding.put(sequence, result);
         
@@ -127,7 +121,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param handler The callback to initiate when sending is completed.
      * @return CompletableFuture<JSONObject> future which will complete when ???
      */
-    public CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json, SendHandler handler) {
+    protected CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         result.complete(json);
 
@@ -136,20 +130,28 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     }
 
     /**
-     * Associates a {@link PubSubMessageHandler} to call for message received from the given channel.
-     * @param channel The channel with which to associate the given handler
-     * @param handler The {@link PubSubMessageHandler} that will be called for message from the given channel.
-     */
-    public void addMessageHandler(String channel, PubSubMessageHandler handler) {
-        msgHandlers.put(channel, handler);
-    }
-
-    /**
-     * Closes the connection represented by this PubSubSocket
+     * Initiates the connection the the Pub/Sub server with the configuration for this PubSubSocket
+     * @throws DeploymentException
      * @throws IOException
      */
-    public void close() throws IOException {
-        session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Closing by Choice"));
+    private void connect() 
+        throws DeploymentException, IOException 
+    {
+        // TODO: make async
+        ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
+        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+
+        if(container != null) {
+            session = container.connectToServer(this, config, URI.create(options.getUrl()));
+            server = session.getAsyncRemote();
+        }
+        else {
+            throw new RuntimeException("There was no socket container implementation found.");
+        }
+
+        if(session == null) {
+            throw new RuntimeException("Could not instantiate connection to server.");
+        }
     }
 
     ///////////////////// EXTENDING ENDPOINT AND IMPLEMENTING MESSAGE_HANDLER ///////////////////// 

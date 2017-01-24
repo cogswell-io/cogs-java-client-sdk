@@ -25,12 +25,12 @@ public class PubSubAuth
     /**
      * The encoded payload.
      */
-    public String payload;
+    private String payload;
 
     /**
      * The HMAC for the payload
      */
-    public String payloadHmac;
+    private String payloadHmac;
 
     /**
      * Construct the payload information with the given keys. No session will be restored.

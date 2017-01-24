@@ -18,13 +18,6 @@ public class PubSubSDK {
     private static PubSubSDK instance;
 
     /**
-     * Singleton constructor
-     */
-    private PubSubSDK() {
-        // No setup needed
-    }
-
-    /**
      * Creates {@link PubSubSDK} instance if none exists, otherwise returns the existing instance.
      * @return PubSubSDK Instance used to work with the Pub/Sub SDK 
      */
@@ -37,12 +30,18 @@ public class PubSubSDK {
     }
 
     /**
+     * Singleton constructor
+     */
+    private PubSubSDK() {
+        // No setup needed
+    }
+
+    /**
      * Creates a connection with the given project keys, and the defaults set for the {@link PubSubOptions}
      * @param projectKeys The list of requested keys for the connection to be established
      * @return CompletableFuture<PubSubHandle> future that will contain {@PubSubHandle} used for making SDK requests 
      */
-    public CompletableFuture<PubSubHandle> connect(List<String> projectKeys)
-    {
+    public CompletableFuture<PubSubHandle> connect(List<String> projectKeys) {
         return connect(projectKeys, new PubSubOptions());
     }
 
@@ -52,8 +51,7 @@ public class PubSubSDK {
      * @param options The {@link PubSubOptions} to use for the connection to be established
      * @return CompletableFuture<PubSubHandle> future that will contain {@PubSubHandle} used for making SDK requests 
      */
-    public CompletableFuture<PubSubHandle> connect(List<String> projectKeys, PubSubOptions options)
-    {
+    public CompletableFuture<PubSubHandle> connect(List<String> projectKeys, PubSubOptions options) {
         CompletableFuture future = CompletableFuture.supplyAsync(() -> {
             try {
                 PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys);
