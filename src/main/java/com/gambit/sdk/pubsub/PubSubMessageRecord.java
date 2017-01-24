@@ -1,8 +1,6 @@
 package com.gambit.sdk.pubsub;
 
-import java.time.format.DateTimeFormatter;
 import java.time.Instant;
-
 import java.util.UUID;
 
 /**
@@ -47,11 +45,26 @@ public class PubSubMessageRecord
     }
 
     /**
-     * 
+     * Returns the channel stored by this PubSubMessageRecord
+     * @return String
      */
     public String getChannel() { return channel; }
+
+    /**
+     * Returns the message content from the original Pub/Sub message stored by this PubSubMessageRecord
+     * @return String
+     */
     public String getMessage() { return message; }
 
+    /**
+     * Returns the timestamp from the original Pub/Sub message stored by this PubSubMessageRecord
+     * @return java.time.Instant
+     */
     public Instant getTimestamp() { return timestamp; }
+
+    /**
+     * Returns the UUID of the original Pub/Sub message stored by this PubSubMessageRecord
+     * @return java.util.UUID 
+     */
     public UUID getId() { return id; }
 }
