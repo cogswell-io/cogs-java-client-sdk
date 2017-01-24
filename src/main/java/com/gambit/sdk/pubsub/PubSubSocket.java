@@ -20,7 +20,8 @@ import com.gambit.sdk.pubsub.handlers.*;
 
 /**
  * PubSubSocket is used to wrap the logic of Java websockets by extending {@link javax.websocket.Endpoint}
- * and implementing {@link javax.websocket.MessageHandler.Whole}.
+ * and implementing {@link javax.websocket.MessageHandler.Whole}. It also servers the purpose of tracking
+ * and routing incoming and outgoing message to and from the Pub/Sub server.
  */
 public class PubSubSocket extends Endpoint implements MessageHandler.Whole<String>
 {
@@ -45,7 +46,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     private Session session;
 
     /**
-     * Maps each outstanding request to the server by their sequence number with their {@link CompletableFuture}.
+     * Maps each outstanding request to the server by their sequence number 
+     * with their associated {@link java.util.concurrent.CompletableFuture}
      */
     private Map<Long, CompletableFuture<JSONObject>> outstanding;
 
@@ -87,7 +89,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     public void close() 
         throws IOException 
     {
-        session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Closing by Choice"));
+        session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Initiated a Standard Close"));
     }
 
     /**
@@ -115,7 +117,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Sends the given request, represented by the {@link org.json.JSONObject}, to the server and maps the
      * eventual result to be stored in a {@link java.util.concurrent.CompletableFuture} with the sequence
      * number of the message. Once the send is completed, the callback {@link javax.websocket.SendHandler}
-     * is called. (Note: the callback is initiated after success or failur to send, not after receiving.)
+     * is called. (Note: the callback is initiated after success or failure to send, not after receiving.)
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
      * @param handler The callback to initiate when sending is completed.
@@ -137,12 +139,11 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     private void connect() 
         throws DeploymentException, IOException 
     {
-        // TODO: make async
         ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
         if(container != null) {
-            session = container.connectToServer(this, config, URI.create(options.getUrl()));
+            session = container.asyncConnectToServer(this, config, URI.create(options.getUrl())).get();
             server = session.getAsyncRemote();
         }
         else {

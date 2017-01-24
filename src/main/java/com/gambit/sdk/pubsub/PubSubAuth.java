@@ -122,6 +122,7 @@ public class PubSubAuth
     {
         List<ByteBuffer> permIdents = new Vector<>();
 
+        // Coding Choice: Using for-each loop, instead of streams prevents issues with checked Exceptions in lambdas
         for(String key : keys) {
             String[] arr = key.split("-");
             String ident = arr[arr.length - 1];
