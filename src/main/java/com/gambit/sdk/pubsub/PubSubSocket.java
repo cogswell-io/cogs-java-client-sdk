@@ -143,7 +143,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
         if(container != null) {
-            session = container.asyncConnectToServer(this, config, URI.create(options.getUrl())).get();
+            session = container.connectToServer(this, config, URI.create(options.getUrl()));
             server = session.getAsyncRemote();
         }
         else {
