@@ -212,6 +212,4 @@ public class PubSubHandle {
 
     public void onError(PubSubErrorHandler errorHandler) {
     }
-
-
 }
