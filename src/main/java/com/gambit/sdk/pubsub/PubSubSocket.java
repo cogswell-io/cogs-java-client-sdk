@@ -194,8 +194,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     @Override
     public void onMessage(String message) {
         JSONObject json = new JSONObject(message);
-        //System.out.println("RECEIVED FROM SERVER: ");
-        //System.out.println("\t" + message);
 
         if(json.getString("action").equals("msg")) {
             String id = json.getString("id");
