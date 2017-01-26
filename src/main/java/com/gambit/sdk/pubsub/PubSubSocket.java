@@ -6,8 +6,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CompletableFuture;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
+import java.util.List;
 
 import java.io.IOException;
 
@@ -56,6 +57,12 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     private Map<String, PubSubMessageHandler> msgHandlers;
 
+    protected PubSubSocket() {
+        this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
+        this.outstanding = Collections.synchronizedMap(new Hashtable<>());
+        this.options = new PubSubOptions();
+    }
+
     /**
      * Creates a connection to the Pub/Sub server given a {@link PubSubSocketConfigurator} and {@link PubSubOptions}
      * @param config The configuration requested for the connection represented by this PubSubSocket
@@ -63,12 +70,12 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @throws DeploymentException
      * @throws IOException
      */
-    public PubSubSocket(PubSubSocketConfigurator config, PubSubOptions options)
+    public PubSubSocket(List<String> projectKeys, PubSubOptions options)
         throws DeploymentException, IOException
     {
-        this.msgHandlers = Collections.synchronizedMap(new HashMap<>());
-        this.outstanding = Collections.synchronizedMap(new HashMap<>());
-        this.configurator = config;
+        this.configurator = new PubSubSocketConfigurator(projectKeys);
+        this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
+        this.outstanding = Collections.synchronizedMap(new Hashtable<>());
         this.options = options;
         connect();
     }
@@ -80,6 +87,14 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     public void addMessageHandler(String channel, PubSubMessageHandler handler) {
         msgHandlers.put(channel, handler);
+    }
+
+    /**
+     * Disassociates the current {@link PubSubMessageHandler}, if any, with the given channel.
+     * @param channel The channel from which to remove the handler
+     */
+    public void removeMessageHandler(String channel) {
+        msgHandlers.remove(channel);
     }
 
     /**
@@ -100,7 +115,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param json The request to send to the Pub/Sub server
      * @return CompletableFuture<JSONObject> future that will contain server response to given request
      */
-    protected CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json) {
+    protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         outstanding.put(sequence, result);
         
@@ -123,7 +138,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param handler The callback to initiate when sending is completed.
      * @return CompletableFuture<JSONObject> future which will complete when ???
      */
-    protected CompletableFuture<JSONObject> sendMessage(long sequence, JSONObject json, SendHandler handler) {
+    protected CompletableFuture<JSONObject> sendPublish(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         result.complete(json);
 

@@ -52,7 +52,7 @@ public class PubSubHandle {
             .put("seq", seq)
             .put("action", "session-uuid");
 
-        socket.sendMessage(seq, request)
+        socket.sendRequest(seq, request)
             .thenAcceptAsync((json) -> {
                 UUID uuid = UUID.fromString(json.getString("uuid"));
                 outcome.complete(uuid);
@@ -67,8 +67,7 @@ public class PubSubHandle {
 
     /**
      * Subscribe to the given channel, and process messages from channel with the given {@link PubSubMessageHandler}.
-     * It is possible to send in null for the PubSubMessageHandler, which means the connection will subscribe to the
-     * given channel, but any messages received from that channel are handled by the generic onRawRecord handler.
+     * THe provided handler cannot be null.
      * @param channel The name of the channel to which to subscribe
      * @param messageHandler The handler which will handle Pub/Sub messages received on the given channel
      * @return CompletableFuture<List<String>> Future completing with list of subscriptions on success, error otherwise 
@@ -84,7 +83,7 @@ public class PubSubHandle {
 
         socket.addMessageHandler(channel, messageHandler);
 
-        socket.sendMessage(seq, request)
+        socket.sendRequest(seq, request)
             .thenAcceptAsync((json) -> {
                 List<String> channels = Collections.synchronizedList(new LinkedList<>());
                 JSONArray list = json.getJSONArray("channels");
@@ -96,7 +95,7 @@ public class PubSubHandle {
                 outcome.complete(channels);
             })
             .exceptionally((error) -> {
-                //socket.removeMessageHandler(channel, messageHandler);
+                socket.removeMessageHandler(channel);
                 outcome.completeExceptionally(error);
                 return null;
             });
@@ -118,7 +117,7 @@ public class PubSubHandle {
             .put("action", "unsubscribe")
             .put("channel", channel);
 
-        socket.sendMessage(seq, request)
+        socket.sendRequest(seq, request)
             .thenAcceptAsync((json) -> {
                 List<String> channels = Collections.synchronizedList(new LinkedList<>());
                 JSONArray list = json.getJSONArray("channels");
@@ -142,14 +141,14 @@ public class PubSubHandle {
      * @return CompletableFuture<List<String>> Future completing with list of subscriptions on success, error otherwise
      */
     public CompletableFuture<List<String>> listSubscriptions() {
-        CompletableFuture outcome = new CompletableFuture<>();
+        CompletableFuture<List<String>> outcome = new CompletableFuture<>();
 
         long seq = sequence.getAndIncrement();
         JSONObject request = new JSONObject()
             .put("seq", seq)
             .put("action", "subscriptions");
 
-        socket.sendMessage(seq, request)
+        socket.sendRequest(seq, request)
             .thenAcceptAsync((json) -> {
                 List<String> channels = Collections.synchronizedList(new LinkedList<>());
                 JSONArray list = json.getJSONArray("channels");
@@ -186,7 +185,7 @@ public class PubSubHandle {
             .put("chan", channel)
             .put("msg", message);
 
-        socket.sendMessage(seq, publish, (result) -> {
+        socket.sendPublish(seq, publish, (result) -> {
             if(result.isOK()) {
                 outcome.complete(seq);
             }
@@ -246,7 +245,7 @@ public class PubSubHandle {
      * Unsubscribe from all current channel subscriptions
      * @return CompletableFuture<List<String>> Future completing with list of all unsubscribed channels, error otherwise
      */
-    private CompletableFuture<List<String>> unsubscribeAll() {
+    public CompletableFuture<List<String>> unsubscribeAll() {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
         long seq = sequence.getAndIncrement();
 
@@ -254,7 +253,7 @@ public class PubSubHandle {
             .put("seq", seq)
             .put("action", "unsubscribe-all");
 
-        socket.sendMessage(seq, request)
+        socket.sendRequest(seq, request)
             .thenAcceptAsync((json) -> {
                 List<String> channels = Collections.synchronizedList(new LinkedList<>());
                 JSONArray list = json.getJSONArray("channels");

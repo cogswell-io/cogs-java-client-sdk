@@ -52,12 +52,11 @@ public class PubSubSDK {
      * @return CompletableFuture<PubSubHandle> future that will contain {@PubSubHandle} used for making SDK requests 
      */
     public CompletableFuture<PubSubHandle> connect(List<String> projectKeys, PubSubOptions options) {
-        CompletableFuture future = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<PubSubHandle> future = CompletableFuture.supplyAsync(() -> {
             try {
-                PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys);
                 PubSubOptions opts = (options == null) ? options : new PubSubOptions();
 
-                PubSubSocket socket = new PubSubSocket(configurator, options);
+                PubSubSocket socket = new PubSubSocket(projectKeys, options);
                 PubSubHandle handle = new PubSubHandle(socket);
 
                 return handle;
