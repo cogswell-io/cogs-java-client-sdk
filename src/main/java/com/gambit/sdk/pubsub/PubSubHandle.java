@@ -228,6 +228,13 @@ public class PubSubHandle {
     }
 
     /**
+     * Register a handler for whenever a raw JSON (String) record comes through from the Pub/Sub server
+     * @param rawRecordHandler The {@link PubSubRawRecordHandler} that should be registered 
+     */
+    public void onRawRecord(PubSubRawRecordHandler rawRecordHandler) {
+    }
+
+    /**
      * Register a handler for close events
      * @param closeHandler The {@link PubSubCloseHandler} that should be registered
      */

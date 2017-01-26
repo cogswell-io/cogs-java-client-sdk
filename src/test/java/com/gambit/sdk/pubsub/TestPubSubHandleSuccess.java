@@ -75,7 +75,8 @@ public class TestPubSubHandleSuccess {
 
     @Test
     public void testSubscribeSuccessful() {
-        PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+        TestPubSubSocketSuccess socket = new TestPubSubSocketSuccess();
+        PubSubHandle testHandle = new PubSubHandle(socket);
         CountDownLatch signal = new CountDownLatch(1);
 
         PubSubMessageHandler handler = new PubSubMessageHandler() {
@@ -90,6 +91,12 @@ public class TestPubSubHandleSuccess {
                 assertTrue(
                     "The channel list returned should contain the channel passed in.",
                     subscriptions.contains(channel)
+                );
+
+                assertSame(
+                    "The message handler found in the PubSubSocket should be the one given.",
+                    handler,
+                    socket.getMessageHandler(channel)
                 );
 
                 signal.countDown();
@@ -311,6 +318,10 @@ class TestPubSubSocketSuccess extends PubSubSocket
 
     public void removeMessageHandler(String channel) {
         handlers.remove(channel);
+    }
+
+    public PubSubMessageHandler getMessageHandler(String channel) {
+        return handlers.get(channel);
     }
 
     protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
