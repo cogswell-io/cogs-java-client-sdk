@@ -4,6 +4,7 @@ import javax.websocket.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
@@ -40,247 +41,257 @@ public class TestPubSubHandleSuccess {
 
     @Test
     public void testGetSessionSuccessful() {
-        PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
-        CountDownLatch signal = new CountDownLatch(1);
-
-        testHandle.getSessionUuid()
-            .thenAcceptAsync((uuid) -> {
-                assertEquals(
-                    "The returned UUID should match the expected UUID",
-                    TestPubSubSocketSuccess.FAKE_UUID,
-                    uuid
-                );
-
-                signal.countDown();
-            })
-            .exceptionally((error) -> {
-                hasError = true;
-                errorMessage = "There was an error with completion: " + error.getMessage(); 
-                signal.countDown();
-
-                return null;
-            });
-
         try {
-            signal.await();
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+            CountDownLatch signal = new CountDownLatch(1);
 
-            if(hasError) {
-                fail(errorMessage);
+            testHandle.getSessionUuid()
+                .thenAcceptAsync((uuid) -> {
+                    try {
+                        assertEquals(
+                            "The returned UUID should match the expected UUID",
+                            TestPubSubSocketSuccess.FAKE_UUID,
+                            uuid
+                        );
+
+                        signal.countDown();
+                    }
+                    catch(AssertionError e) {
+                        throw new CompletionException(e);
+                    }
+                })
+                .exceptionally((error) -> {
+                    hasError = true;
+                    errorMessage = error.getCause().getMessage(); 
+                    signal.countDown();
+
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
             }
         }
-        catch(InterruptedException e) {
-            fail("There was an error waiting for the test to finish: " + e.getMessage());
+        catch(Throwable e) {
+            fail("There was an exception thrown: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     @Test
     public void testSubscribeSuccessful() {
-        TestPubSubSocketSuccess socket = new TestPubSubSocketSuccess();
-        PubSubHandle testHandle = new PubSubHandle(socket);
-        CountDownLatch signal = new CountDownLatch(1);
-
-        PubSubMessageHandler handler = new PubSubMessageHandler() {
-            @Override
-            public void onMessage(PubSubMessageRecord record) {}
-        };
-
-        String channel = "This is a test...";
-
-        testHandle.subscribe(channel, handler)
-            .thenAcceptAsync((subscriptions) -> {
-                assertTrue(
-                    "The channel list returned should contain the channel passed in.",
-                    subscriptions.contains(channel)
-                );
-
-                assertSame(
-                    "The message handler found in the PubSubSocket should be the one given.",
-                    handler,
-                    socket.getMessageHandler(channel)
-                );
-
-                signal.countDown();
-            })
-            .exceptionally((error) -> {
-                hasError = true;
-                errorMessage = "There was an error with completion: " + error.getMessage();
-                signal.countDown();
-                return null;
-            });
-
         try {
-            signal.await();
+            TestPubSubSocketSuccess socket = new TestPubSubSocketSuccess();
+            PubSubHandle testHandle = new PubSubHandle(socket);
+            CountDownLatch signal = new CountDownLatch(1);
 
-            if(hasError) {
-                fail(errorMessage);
+            PubSubMessageHandler handler = new PubSubMessageHandler() {
+                @Override
+                public void onMessage(PubSubMessageRecord record) {}
+            };
+
+            String channel = "This is a test...";
+
+            testHandle.subscribe(channel, handler)
+                .thenAcceptAsync((subscriptions) -> {
+                    try {
+                        assertTrue(
+                            "The channel list returned should contain the channel passed in.",
+                            subscriptions.contains(channel)
+                        );
+
+                        assertSame(
+                            "The message handler found in the PubSubSocket should be the one given.",
+                            handler,
+                            socket.getMessageHandler(channel)
+                        );
+
+                        signal.countDown();
+                    }
+                    catch(AssertionError e) {
+                        throw new CompletionException(e);
+                    }
+                })
+                .exceptionally((error) -> {
+                    hasError = true;
+                    errorMessage = error.getCause().getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
             }
         }
-        catch(InterruptedException e) {
-            fail("There was an error waiting for the test to finish: " + e.getMessage());
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
     @Test
     public void testUnsubscribeSuccessful() {
-        PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
-        CountDownLatch signal = new CountDownLatch(1);
-
-        String channel = "This is a test..." + UUID.randomUUID().toString();
-
-        testHandle.subscribe(channel, (record) -> {})
-            .thenComposeAsync((subscriptions) -> {
-                assertTrue(
-                    "The channel list returned should contain the channel passed in.",
-                    subscriptions.contains(channel)
-                );
-
-                return testHandle.unsubscribe(channel);
-            })
-            .thenAcceptAsync((subscriptions) -> {
-                assertTrue(
-                    "The channel list returned should NOT contain the channel which was unsubscribed.",
-                    !subscriptions.contains(channel)
-                );
-
-                signal.countDown();
-            })
-            .exceptionally((error) -> {
-                hasError = true;
-                errorMessage = "There was an error with completion: " + error.getMessage();
-                signal.countDown();
-                return null;
-            });
-
         try {
-            signal.await();
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+            CountDownLatch signal = new CountDownLatch(1);
 
-            if(hasError) {
-                fail(errorMessage);
+            String channel = "This is a test..." + UUID.randomUUID().toString();
+
+            testHandle.subscribe(channel, (record) -> {})
+                .thenComposeAsync((subscriptions) -> {
+                    try {
+                        assertTrue(
+                            "The channel list returned should contain the channel passed in.",
+                            subscriptions.contains(channel)
+                        );
+                    }
+                    catch(AssertionError e) {
+                        throw new CompletionException(e);
+                    }
+
+                    return testHandle.unsubscribe(channel);
+                })
+                .thenAcceptAsync((subscriptions) -> {
+                    try {
+                        assertTrue(
+                            "The channel list returned should NOT contain the channel which was unsubscribed.",
+                            !subscriptions.contains(channel)
+                        );
+
+                        signal.countDown();
+                    }
+                    catch(AssertionError e) {
+                        throw new CompletionException(e);
+                    }
+                })
+                .exceptionally((error) -> {
+                    hasError = true;
+                    errorMessage = error.getCause().getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
             }
         }
-        catch(InterruptedException e) {
-            fail("There was an error waiting for the test to finish: " + e.getMessage());
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
     @Test
     public void testListSubscriptionsSuccessful() {
-        PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
-        CountDownLatch signal = new CountDownLatch(1);
-
-        String[] channels = { "MOVIES & BOOKS", "DIY", "POSITIVE THINKING" };
-        AtomicInteger index = new AtomicInteger(0);
-
-        testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {})
-            .thenComposeAsync((subscriptions) -> {
-                return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
-            })
-            .thenComposeAsync((subscriptions) -> {
-                return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
-            })
-            .thenComposeAsync((subscriptions) -> {
-                return testHandle.listSubscriptions();
-            })
-            .thenAcceptAsync((subscriptions) -> {
-                assertTrue(
-                    "The provided list should contain all of the original subscriptions.",
-                    subscriptions.containsAll(Arrays.asList(channels))
-                );
-
-                signal.countDown();
-            })
-            .exceptionally((error) -> {
-                hasError = true;
-                errorMessage = "There was an error with completion: " + error.getMessage();
-                signal.countDown();
-                return null;
-            });
-
         try {
-            signal.await();
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+            CountDownLatch signal = new CountDownLatch(1);
 
-            if(hasError) {
-                fail(errorMessage);
+            String[] channels = { "MOVIES & BOOKS", "DIY", "POSITIVE THINKING" };
+            AtomicInteger index = new AtomicInteger(0);
+
+            testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {})
+                .thenComposeAsync((subscriptions) -> {
+                    return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return testHandle.listSubscriptions();
+                })
+                .thenAcceptAsync((subscriptions) -> {
+                    try {
+                        assertTrue(
+                            "The provided list should contain all of the original subscriptions.",
+                            subscriptions.containsAll(Arrays.asList(channels))
+                        );
+
+                        signal.countDown();
+                    }
+                    catch(AssertionError e) {
+                        throw new CompletionException(e);
+                    }
+                })
+                .exceptionally((error) -> {
+                    hasError = true;
+                    errorMessage = error.getCause().getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
             }
         }
-        catch(InterruptedException e) {
-            fail("There was an error waiting for the test to finish: " + e.getMessage());
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
     @Test
     public void testPublishSuccessful() {
-        PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
-        CountDownLatch signal = new CountDownLatch(1);
-
-        String channel = "COOKING";
-        String message = "Next Week: We show you how to clean and cook with leeks.";
-
-        testHandle.subscribe(channel, (record) -> {
-            assertEquals(
-                "The record message content should match the message that was actually published.",
-                message,
-                record.getMessage()
-            );
-
-            assertEquals(
-                "The record channel should match the channel on which the message was actually published.",
-                channel,
-                record.getChannel()
-            );
-
-            signal.countDown();
-        })
-        .thenComposeAsync((subscriptions) -> {
-            return testHandle.publish(channel, message);
-        })
-        .thenAcceptAsync((sequence) -> {
-            // Do nothing
-        })
-        .exceptionally((error) -> {
-            hasError = true;
-            errorMessage = "There was an error with completion: " + error.getMessage();
-            signal.countDown();
-            return null;
-        });
-
         try {
-            signal.await();
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+            CountDownLatch signal = new CountDownLatch(1);
 
-            if(hasError) {
-                fail(errorMessage);
-            }
-        }
-        catch(InterruptedException e) {
-            fail("There was an error waiting for the test to finish: " + e.getMessage());
-        }
-    }
+            String channel = "COOKING";
+            String message = "Next Week: We show you how to clean and cook with leeks.";
 
-    @Test
-    public void testUnsubscribeAllSuccessful() {
-        PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
-        CountDownLatch signal = new CountDownLatch(1);
+            testHandle.subscribe(channel, (record) -> {
+                try {
+                    assertEquals(
+                        "The record message content should match the message that was actually published.",
+                        message,
+                        record.getMessage()
+                    );
 
-        String[] channels = { "PEOPLE", "PLACES", "THINGS" };
-        AtomicInteger index = new AtomicInteger(0);
+                    assertEquals(
+                        "The record channel should match the channel on which the message was actually published.",
+                        channel,
+                        record.getChannel()
+                    );
 
-        testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {})
-            .thenComposeAsync((subscriptions) -> {
-                return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
+                    signal.countDown();
+                }
+                catch(AssertionError e) {
+                    throw new CompletionException(e);
+                }
             })
             .thenComposeAsync((subscriptions) -> {
-                return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
+                return testHandle.publish(channel, message);
             })
-            .thenComposeAsync((subscriptions) -> {
-                return testHandle.unsubscribeAll();
-            })
-            .thenAcceptAsync((subscriptions) -> {
-                assertTrue(
-                    "The subscriptions list should be completely empty now.",
-                    subscriptions.isEmpty()
-                );
-
-                signal.countDown();
+            .thenAcceptAsync((sequence) -> {
+                // Reaching here is an okay thing.
             })
             .exceptionally((error) -> {
                 hasError = true;
@@ -289,15 +300,77 @@ public class TestPubSubHandleSuccess {
                 return null;
             });
 
-        try {
-            signal.await();
+            try {
+                signal.await();
 
-            if(hasError) {
-                fail(errorMessage);
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
             }
         }
-        catch(InterruptedException e) {
-            fail("There was an error waiting for the test to finish: " + e.getMessage());
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+            
+    }
+
+    @Test
+    public void testUnsubscribeAllSuccessful() {
+        try {
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+            CountDownLatch signal = new CountDownLatch(1);
+
+            String[] channels = { "PEOPLE", "PLACES", "THINGS" };
+            AtomicInteger index = new AtomicInteger(0);
+
+            testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {})
+                .thenComposeAsync((subscriptions) -> {
+                    return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return testHandle.subscribe(channels[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return testHandle.unsubscribeAll();
+                })
+                .thenAcceptAsync((subscriptions) -> {
+                    try {
+                        assertTrue(
+                            "The subscriptions list should be completely empty now.",
+                            subscriptions.isEmpty()
+                        );
+
+                        signal.countDown();
+                    }
+                    catch(AssertionError e) {
+                        throw new CompletionException(e);
+                    }
+                })
+                .exceptionally((error) -> {
+                    hasError = true;
+                    errorMessage = "There was an error with completion: " + error.getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
+            }
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 }

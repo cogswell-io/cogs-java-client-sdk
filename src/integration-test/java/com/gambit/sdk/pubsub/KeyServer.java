@@ -18,7 +18,7 @@ public class KeyServer
     }
 
     public CompletableFuture<GambitResponse> createKey(JSONObject key) {
-        CompletableFuture promise = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<GambitResponse> promise = CompletableFuture.supplyAsync(() -> {
             try {
                 URL url = new URL(serverLoc + "/project_key");
                 String message = key.toString();

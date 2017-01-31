@@ -42,6 +42,8 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
      */
     @Override
     public void beforeRequest(Map<String, List<String>> headers) {
+        //headers.clear();
+        //headers.put("Host", Collections.singletonList("gamqa-api.aviatainc.com"));
         headers.put("Payload", Collections.singletonList(payload));
         headers.put("PayloadHMAC", Collections.singletonList(payloadHmac));
     }

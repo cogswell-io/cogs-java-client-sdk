@@ -1,10 +1,13 @@
 package com.gambit.sdk.pubsub;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.Vector;
 import java.util.List;
 
@@ -66,123 +69,331 @@ public class PubSubIntegrationTests {
 
     @Test
     public void testSubscribeAndUnsubscribe() {
-        KeyServer keyServer = new KeyServer("http://localhost:8778");
-        PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-
-        JSONObject keys = getRandomProjectKey();
-        String identity = keys.getString("identity");
-        List<String> permissions = buildPermissionKeys(keys);
-
-        CountDownLatch signal = new CountDownLatch(1);
-        String channel = "BOOKS & MOVIES";
-
-        keyServer.createKey(keys)
-            .thenComposeAsync((result) -> {
-                return pubsubSDK.connect(permissions);
-            })
-            .thenComposeAsync((handle) -> {
-                pubsubHandle = handle;
-
-                return pubsubHandle.subscribe(channel, (record) -> {
-                    fail("There should be no records received in this test.");
-                });
-            })
-            .thenComposeAsync((subscriptions) -> {
-                assertEquals(
-                    "There should be only one subscription: That to " + channel,
-                    Collections.singletonList(channel),
-                    subscriptions
-                );
-
-                return pubsubHandle.unsubscribe(channel);
-            })
-            .thenComposeAsync((subscriptions) -> {
-                assertTrue(
-                    "The list of subscriptions should be empty now...",
-                    ((List<String>)subscriptions).isEmpty()
-                );
-
-                return keyServer.deleteKey(identity);
-            })
-            .thenAcceptAsync((result) -> {
-                signal.countDown();
-            })
-            .exceptionally((error) -> {
-                errorMessage = error.getMessage();
-                isError = true;
-                signal.countDown();
-                
-                return null;
-            });
-
         try {
-            signal.await();
+            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
 
-            if(isError) {
-                fail("There was an exception: " + errorMessage);
+            JSONObject keys = getRandomProjectKey();
+
+            String identity = keys.getString("identity");
+            List<String> permissions = buildPermissionKeys(keys);
+
+            CountDownLatch signal = new CountDownLatch(1);
+            String channel = "BOOKS & MOVIES";
+
+            keyServer.createKey(keys)
+                .thenComposeAsync((result) -> {
+                    return pubsubSDK.connect(permissions);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    return pubsubHandle.subscribe(channel, (record) -> {
+                        fail("There should be no records received in this test.");
+                    });
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    try {
+                        assertEquals(
+                            "There should be only one subscription: That to " + channel,
+                            Collections.singletonList(channel),
+                            subscriptions
+                        );
+                    }
+                    catch(AssertionError e) {
+                        isError = true;
+                        errorMessage = e.getMessage();
+                    }
+
+                    return pubsubHandle.unsubscribe(channel);
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    try {
+                        assertTrue(
+                            "The list of subscriptions should be empty now...",
+                            ((List<String>)subscriptions).isEmpty()
+                        );
+                    }
+                    catch(AssertionError e) {
+                        isError = true;
+                        errorMessage = e.getMessage();
+                    }
+
+                    signal.countDown();
+
+                    return keyServer.deleteKey(identity);
+                })
+                .thenAcceptAsync((result) -> {
+                    signal.countDown();
+                })
+                .exceptionally((error) -> {
+                    errorMessage = error.getMessage();
+                    isError = true;
+                    signal.countDown();
+                    
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("The test was unable to finish properly.");
             }
         }
-        catch(InterruptedException e) {
-            fail("The test was unable to finish properly.");
+        catch(Throwable e) {
+            fail("There was an exception thrown: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     @Test
-    public void testReceivingMessageForSubscription() {
-        KeyServer keyServer = new KeyServer("http://localhost:8778");
-        PubSubSDK pubsub = PubSubSDK.getInstance();
+    public void testReceiveMessageForSubscription() {
+        try {
+            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubSDK pubsub = PubSubSDK.getInstance();
 
-        JSONObject key = getRandomProjectKey();
-        String ident = key.getString("identity");
-        List<String> permissionKeys = buildPermissionKeys(key);
+            JSONObject key = getRandomProjectKey();
+            String ident = key.getString("identity");
+            List<String> permissionKeys = buildPermissionKeys(key);
 
-        CountDownLatch signal = new CountDownLatch(1);
-        String testChan = "BOOKS & MOVIES";
-        String testMsg = "Out Now: The Thriller of the Century. Find it near you!";
+            CountDownLatch signal = new CountDownLatch(1);
+            String testChan = "BOOKS & MOVIES";
+            String testMsg = "Out Now: The Thriller of the Century. Find it near you!";
 
-        keyServer.createKey(key)
-            .thenComposeAsync((result) -> {
-                return pubsub.connect(permissionKeys);
-            })
-            .thenComposeAsync((handle) -> {
-                pubsubHandle = handle;
-                
-                return pubsubHandle.subscribe(testChan, (record) -> {
-                    assertEquals(
-                        "The channel published should be the one received.",
-                        testChan, 
-                        record.getChannel()
-                    );
+            keyServer.createKey(key)
+                .thenComposeAsync((result) -> {
+                    return pubsub.connect(permissionKeys);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+                    
+                    return pubsubHandle.subscribe(testChan, (record) -> {
+                        try {
+                            assertEquals(
+                                "The channel published should be the one received.",
+                                testChan, 
+                                record.getChannel()
+                            );
 
-                    assertEquals(
-                        "The message content received is that which was published.",
-                        testMsg,
-                        record.getMessage()
-                    );
+                            assertEquals(
+                                "The message content received is that which was published.",
+                                testMsg,
+                                record.getMessage()
+                            );
+                        }
+                        catch(AssertionError e) {
+                            isError = true;
+                            errorMessage = e.getMessage();
+                        }
+
+                        signal.countDown();
+                    });
+                })
+                .thenComposeAsync((sequence) -> {
+                    return pubsubHandle.publish(testChan, testMsg);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+
+            pubsubHandle.close()
+                .thenComposeAsync((channels) -> {
+                    return keyServer.deleteKey(ident);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testListingSubscriptions() {
+        try {
+            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubSDK pubsub = PubSubSDK.getInstance();
+
+            JSONObject key = getRandomProjectKey();
+            String ident = key.getString("identity");
+            List<String> permissionKeys = buildPermissionKeys(key);
+
+            CountDownLatch signal = new CountDownLatch(1);
+            
+            String[] testChans = { "BOOKS & MOVIES", "ARTS & CRAFTS", "SELF-IMPROVEMENT" };
+            AtomicInteger index = new AtomicInteger(0);
+
+            keyServer.createKey(key)
+                .thenComposeAsync((result) -> {
+                    return pubsub.connect(permissionKeys);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+                    
+                    return pubsubHandle.subscribe(testChans[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return pubsubHandle.subscribe(testChans[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return pubsubHandle.subscribe(testChans[index.getAndIncrement()], (record) -> {});
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return pubsubHandle.listSubscriptions();
+                })
+                .thenAcceptAsync((subscriptions) -> {
+                    try {
+                        assertEquals(
+                            "The list of subscriptions returned should match the list that was subscribed.",
+                            Arrays.asList(testChans),
+                            subscriptions
+                        );
+                    }
+                    catch(AssertionError e) {
+                        isError = true;
+                        errorMessage = e.getMessage();
+                    }
 
                     signal.countDown();
+                })
+                .exceptionally((error) -> {
+                    errorMessage = error.getMessage();
+                    isError = true;
+                    signal.countDown();
+
+                    return null;
                 });
-            })
-            .thenComposeAsync((sequence) -> {
-                return pubsubHandle.publish(testChan, testMsg);
-            })
-            .exceptionally((error) -> {
-                return null;
-            });
 
+            try {
+                signal.await();
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+
+            pubsubHandle.close()
+                .thenComposeAsync((channels) -> {
+                    return keyServer.deleteKey(ident);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testNoReceiveOnUnsubscribedChannel() {
         try {
-            signal.await();
-        }
-        catch(InterruptedException e) {
-            fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
-        }
+            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubSDK pubsub = PubSubSDK.getInstance();
 
-        pubsubHandle.close()
-            .thenComposeAsync((channels) -> {
-                return keyServer.deleteKey(ident);
-            })
-            .exceptionally((error) -> {
-                return null;
-            });
+            JSONObject key = getRandomProjectKey();
+            String ident = key.getString("identity");
+            List<String> permissionKeys = buildPermissionKeys(key);
+
+            CountDownLatch signal = new CountDownLatch(1);
+            String subscribeChan = "BOOKS & MOVIES";
+            String subscribeMessage = "A good book made into a good movie is a good thing, but it doesn't happen often.";
+            String publishChan = "SPORTS";
+            String publishMessage = "The Super Bowl will not be as big an event this year... Or will it?";
+
+            keyServer.createKey(key)
+                .thenComposeAsync((result) -> {
+                    return pubsub.connect(permissionKeys);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+                    
+                    return pubsubHandle.subscribe(subscribeChan, (record) -> {
+                        try {
+                            assertEquals(
+                                "The channel published should be the one received.",
+                                subscribeChan, 
+                                record.getChannel()
+                            );
+
+                            assertEquals(
+                                "The message content received is that which was published.",
+                                subscribeMessage,
+                                record.getMessage()
+                            );
+
+                            assertTrue(
+                                "The channel published should be the one to which was subscribed.",
+                                record.getChannel().equals(subscribeChan)
+                            );
+
+                            assertTrue(
+                                "The message content received should not have been published on another channel.",
+                                !record.getMessage().equals(publishMessage)
+                            );
+                        }
+                        catch(AssertionError e) {
+                            isError = true;
+                            errorMessage = e.getMessage();
+                        }
+
+                        signal.countDown();
+                    });
+                })
+                .thenComposeAsync((chans) -> {
+                    return pubsubHandle.publish(publishChan, publishMessage);
+                })
+                .thenAcceptAsync((sequence) -> {
+                    pubsubHandle.publish(subscribeChan, subscribeMessage);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+
+            pubsubHandle.close()
+                .thenComposeAsync((channels) -> {
+                    return keyServer.deleteKey(ident);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
     }
 }
