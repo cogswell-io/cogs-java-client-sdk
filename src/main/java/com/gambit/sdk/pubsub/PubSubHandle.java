@@ -204,6 +204,7 @@ public class PubSubHandle {
      * was received. This is unlike the other methods, which return futures with the results from the server.
      * @param channel The name of the channel on which to publish the given message.
      * @param message The actual content of the message to publish on the given channel.
+     * @param handler An error handler that is called if sending fails
      * @return CompletableFuture<Long> Future completed with sequence of message on successful send, error otherwise 
      */
     public CompletableFuture<Long> publish(String channel, String message, PubSubErrorHandler handler) {
@@ -233,6 +234,13 @@ public class PubSubHandle {
         return outcome;
     }
 
+    /**
+     * Publish the given message to the given channel, receiving UUID of published message if publish is successful.
+     * @param channel The name of the channel on which to publish the given message.
+     * @param message The actual content of the message to publish on the given channel.
+     * @param handler An error handler called if sending fails, or if the ack is not properly received
+     * @return CompletableFuture<Long> Future completed with sequence of message on successful send, error otherwise 
+     */
     public CompletableFuture<UUID> publishWithAck(String channel, String message, PubSubErrorHandler handler) {
         CompletableFuture<UUID> outcome = new CompletableFuture<>();
         long seq = sequence.getAndIncrement();
@@ -244,7 +252,7 @@ public class PubSubHandle {
             .put("msg", message)
             .put("ack", true);
 
-        socket.sendPublish(seq, publish, (sendResult) -> {
+        socket.sendPublishWithAck(seq, publish, (sendResult) -> {
             if(!sendResult.isOK()) {
                 outcome.completeExceptionally(sendResult.getException());
                 

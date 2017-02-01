@@ -294,8 +294,28 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     protected CompletableFuture<JSONObject> sendPublish(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
-        result.complete(json);
 
+        server.sendText(json.toString(), (sendResult) -> {
+            if(!sendResult.isOK()) {
+                if(errorHandler != null) {
+                    errorHandler.onError(sendResult.getException(), sequence, json.getString("chan"));
+                }
+
+                handler.onResult(sendResult);
+            }
+            else {
+                handler.onResult(sendResult);
+            }
+        });
+
+        result.complete(new JSONObject());
+        return result;
+    }
+
+    protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
+        CompletableFuture<JSONObject> result = new CompletableFuture<>();
+        outstanding.put(sequence, result);
+        
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {

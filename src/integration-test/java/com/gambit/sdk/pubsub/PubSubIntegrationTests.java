@@ -487,4 +487,75 @@ public class PubSubIntegrationTests {
             ex.printStackTrace();
         }
     }
+
+    @Test
+    public void testPublishWithAck() {
+        try {
+            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubSDK pubsub = PubSubSDK.getInstance();
+
+            JSONObject key = getRandomProjectKey();
+            String ident = key.getString("identity");
+            List<String> permissionKeys = buildPermissionKeys(key);
+
+            CountDownLatch signal = new CountDownLatch(2);
+            String chan = "BOOKS & MOVIES";
+            String message = "A good book made into a good movie is a good thing, but it doesn't happen often.";
+
+            StringBuffer uuidFromMessage = new StringBuffer();
+            StringBuffer uuidFromPublish = new StringBuffer();
+
+            keyServer.createKey(key)
+                .thenComposeAsync((result) -> {
+                    return pubsub.connect(permissionKeys);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+                    
+                    return pubsubHandle.subscribe(chan, (record) -> {
+                        uuidFromMessage.append(record.getId().toString());
+                        signal.countDown();
+                    });
+                })
+                .thenComposeAsync((subs) -> {
+                    return pubsubHandle.publishWithAck(chan, message, null);
+                })
+                .thenAcceptAsync((ack) -> {
+                    uuidFromPublish.append(ack.toString());
+                    signal.countDown();
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                assertEquals(
+                    "The two messages received on different sockets should be the same message.",
+                    uuidFromMessage.toString(),
+                    uuidFromPublish.toString()
+                );
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+
+            pubsubHandle.close()
+                .thenAcceptAsync((channels) -> {
+                    keyServer.deleteKey(ident);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
 }
