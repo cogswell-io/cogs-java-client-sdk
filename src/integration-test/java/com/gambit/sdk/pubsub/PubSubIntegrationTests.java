@@ -22,28 +22,22 @@ import org.junit.Test;
 
 public class PubSubIntegrationTests {
 
-    private static JSONObject getRandomProjectKey() {
-        Random rand = new Random();
-
-        String ident = Integer.toHexString(rand.nextInt());
-        String read = Integer.toHexString(rand.nextInt());
-        String write = Integer.toHexString(rand.nextInt());
-        String admin = Integer.toHexString(rand.nextInt());
-
-        if(ident.length() % 2 != 0) { ident += "f"; }
-        if(read.length() % 2 != 0) { read += "f"; }
-        if(write.length() % 2 != 0) { write += "f"; }
-        if(admin.length() % 2 != 0) { admin += "f"; }
-
+    private static JSONObject getMainKeys() {
         JSONObject key = new JSONObject()
-                .put("identity", ident)
-                .put("read_key", read)
-                .put("write_key", write)
-                .put("admin_key", admin)
-                .put("key_id", 1)
-                .put("project_id", 1)
-                .put("customer_id", 1)
-                .put("enabled", true);
+            .put("identity", "*")
+            .put("read_key", "*")
+            .put("write_key", "*")
+            .put("admin_key", "*");
+
+        return key;
+    }
+
+    private static JSONObject getSecondaryKeys() {
+        JSONObject key = new JSONObject()
+            .put("identity", "*")
+            .put("read_key", "*")
+            .put("write_key", "*")
+            .put("admin_key", "*");
 
         return key;
     }
@@ -71,21 +65,17 @@ public class PubSubIntegrationTests {
     @Test
     public void testSubscribeAndUnsubscribe() {
         try {
-            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
 
-            JSONObject keys = getRandomProjectKey();
-
-            String identity = keys.getString("identity");
             List<String> permissions = buildPermissionKeys(keys);
+            String identity = keys.getString("identity");
 
             CountDownLatch signal = new CountDownLatch(1);
             String channel = "BOOKS & MOVIES";
 
-            keyServer.createKey(keys)
-                .thenComposeAsync((result) -> {
-                    return pubsubSDK.connect(permissions);
-                })
+            pubsubSDK.connect(permissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
 
@@ -108,7 +98,7 @@ public class PubSubIntegrationTests {
 
                     return pubsubHandle.unsubscribe(channel);
                 })
-                .thenComposeAsync((subscriptions) -> {
+                .thenAcceptAsync((subscriptions) -> {
                     try {
                         assertTrue(
                             "The list of subscriptions should be empty now...",
@@ -120,11 +110,6 @@ public class PubSubIntegrationTests {
                         errorMessage = e.getMessage();
                     }
 
-                    signal.countDown();
-
-                    return keyServer.deleteKey(identity);
-                })
-                .thenAcceptAsync((result) -> {
                     signal.countDown();
                 })
                 .exceptionally((error) -> {
@@ -155,21 +140,18 @@ public class PubSubIntegrationTests {
     @Test
     public void testReceiveMessageForSubscription() {
         try {
-            KeyServer keyServer = new KeyServer("http://localhost:8778");
-            PubSubSDK pubsub = PubSubSDK.getInstance();
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
 
-            JSONObject key = getRandomProjectKey();
-            String ident = key.getString("identity");
-            List<String> permissionKeys = buildPermissionKeys(key);
+            List<String> permissions = buildPermissionKeys(keys);
+            String identity = keys.getString("identity");
 
             CountDownLatch signal = new CountDownLatch(1);
             String testChan = "BOOKS & MOVIES";
             String testMsg = "Out Now: The Thriller of the Century. Find it near you!";
 
-            keyServer.createKey(key)
-                .thenComposeAsync((result) -> {
-                    return pubsub.connect(permissionKeys);
-                })
+            pubsubSDK.connect(permissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
                     
@@ -214,9 +196,6 @@ public class PubSubIntegrationTests {
             }
 
             pubsubHandle.close()
-                .thenComposeAsync((channels) -> {
-                    return keyServer.deleteKey(ident);
-                })
                 .exceptionally((error) -> {
                     return null;
                 });
@@ -230,22 +209,19 @@ public class PubSubIntegrationTests {
     @Test
     public void testListingSubscriptions() {
         try {
-            KeyServer keyServer = new KeyServer("http://localhost:8778");
-            PubSubSDK pubsub = PubSubSDK.getInstance();
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
 
-            JSONObject key = getRandomProjectKey();
-            String ident = key.getString("identity");
-            List<String> permissionKeys = buildPermissionKeys(key);
+            List<String> permissions = buildPermissionKeys(keys);
+            String identity = keys.getString("identity");
 
             CountDownLatch signal = new CountDownLatch(1);
             
             String[] testChans = { "BOOKS & MOVIES", "ARTS & CRAFTS", "SELF-IMPROVEMENT" };
             AtomicInteger index = new AtomicInteger(0);
 
-            keyServer.createKey(key)
-                .thenComposeAsync((result) -> {
-                    return pubsub.connect(permissionKeys);
-                })
+            pubsubSDK.connect(permissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
                     
@@ -295,9 +271,6 @@ public class PubSubIntegrationTests {
             }
 
             pubsubHandle.close()
-                .thenComposeAsync((channels) -> {
-                    return keyServer.deleteKey(ident);
-                })
                 .exceptionally((error) -> {
                     return null;
                 });
@@ -311,12 +284,12 @@ public class PubSubIntegrationTests {
     @Test
     public void testNoReceiveOnUnsubscribedChannel() {
         try {
-            KeyServer keyServer = new KeyServer("http://localhost:8778");
-            PubSubSDK pubsub = PubSubSDK.getInstance();
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
 
-            JSONObject key = getRandomProjectKey();
-            String ident = key.getString("identity");
-            List<String> permissionKeys = buildPermissionKeys(key);
+            List<String> permissions = buildPermissionKeys(keys);
+            String identity = keys.getString("identity");
 
             CountDownLatch signal = new CountDownLatch(1);
             String subscribeChan = "BOOKS & MOVIES";
@@ -324,10 +297,7 @@ public class PubSubIntegrationTests {
             String publishChan = "SPORTS";
             String publishMessage = "The Super Bowl will not be as big an event this year... Or will it?";
 
-            keyServer.createKey(key)
-                .thenComposeAsync((result) -> {
-                    return pubsub.connect(permissionKeys);
-                })
+            pubsubSDK.connect(permissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
                     
@@ -385,9 +355,6 @@ public class PubSubIntegrationTests {
             }
 
             pubsubHandle.close()
-                .thenComposeAsync((channels) -> {
-                    return keyServer.deleteKey(ident);
-                })
                 .exceptionally((error) -> {
                     return null;
                 });
@@ -401,16 +368,13 @@ public class PubSubIntegrationTests {
     @Test
     public void testTwoHandlesReceiveSameMessage() {
         try {
-            KeyServer keyServer = new KeyServer("http://localhost:8778");
-            PubSubSDK pubsub = PubSubSDK.getInstance();
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keysOne = getMainKeys();
+            JSONObject keysTwo = getSecondaryKeys();
 
-            JSONObject keyOne = getRandomProjectKey();
-            String identOne = keyOne.getString("identity");
-            List<String> permissionKeysOne = buildPermissionKeys(keyOne);
-
-            JSONObject keyTwo = getRandomProjectKey();
-            String identTwo = keyTwo.getString("identity");
-            List<String> permissionKeysTwo = buildPermissionKeys(keyTwo);
+            List<String> permissionsOne = buildPermissionKeys(keysOne);
+            List<String> permissionsTwo = buildPermissionKeys(keysTwo);
 
             CountDownLatch signal = new CountDownLatch(2);
             String chan = "BOOKS & MOVIES";
@@ -419,16 +383,11 @@ public class PubSubIntegrationTests {
             StringBuffer msgFromOne = new StringBuffer();
             StringBuffer msgFromTwo = new StringBuffer();
 
-            keyServer.createKey(keyOne)
-                .thenComposeAsync((result) -> {
-                    return pubsub.connect(permissionKeysOne);
-                })
+            pubsubSDK.connect(permissionsOne, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
-                    return keyServer.createKey(keyTwo);
-                })
-                .thenComposeAsync((result) -> {
-                    return pubsub.connect(permissionKeysTwo);
+
+                    return pubsubSDK.connect(permissionsTwo, options);
                 })
                 .thenComposeAsync((handle) -> {
                     secondHandle = handle;
@@ -469,14 +428,8 @@ public class PubSubIntegrationTests {
             }
 
             pubsubHandle.close()
-                .thenComposeAsync((channels) -> {
-                    return secondHandle.close();
-                })
-                .thenComposeAsync((channels) -> {
-                    return keyServer.deleteKey(identOne);
-                })
-                .thenAcceptAsync((response) -> {
-                    keyServer.deleteKey(identTwo);
+                .thenAcceptAsync((channels) -> {
+                    secondHandle.close();
                 })
                 .exceptionally((error) -> {
                     return null;
@@ -491,12 +444,12 @@ public class PubSubIntegrationTests {
     @Test
     public void testPublishWithAck() {
         try {
-            KeyServer keyServer = new KeyServer("http://localhost:8778");
-            PubSubSDK pubsub = PubSubSDK.getInstance();
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
 
-            JSONObject key = getRandomProjectKey();
-            String ident = key.getString("identity");
-            List<String> permissionKeys = buildPermissionKeys(key);
+            List<String> permissions = buildPermissionKeys(keys);
+            String identity = keys.getString("identity");
 
             CountDownLatch signal = new CountDownLatch(2);
             String chan = "BOOKS & MOVIES";
@@ -505,10 +458,7 @@ public class PubSubIntegrationTests {
             StringBuffer uuidFromMessage = new StringBuffer();
             StringBuffer uuidFromPublish = new StringBuffer();
 
-            keyServer.createKey(key)
-                .thenComposeAsync((result) -> {
-                    return pubsub.connect(permissionKeys);
-                })
+            pubsubSDK.connect(permissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
                     
@@ -546,9 +496,6 @@ public class PubSubIntegrationTests {
             }
 
             pubsubHandle.close()
-                .thenAcceptAsync((channels) -> {
-                    keyServer.deleteKey(ident);
-                })
                 .exceptionally((error) -> {
                     return null;
                 });

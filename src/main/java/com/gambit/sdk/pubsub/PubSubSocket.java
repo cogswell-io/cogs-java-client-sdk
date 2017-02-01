@@ -283,18 +283,14 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     }
 
     /**
-     * Sends the given request, represented by the {@link org.json.JSONObject}, to the server and maps the
-     * eventual result to be stored in a {@link java.util.concurrent.CompletableFuture} with the sequence
-     * number of the message. Once the send is completed, the callback {@link javax.websocket.SendHandler}
-     * is called. (Note: the callback is initiated after success or failure to send, not after receiving.)
+     * Sends the given request, represented by the {@link org.json.JSONObject}. Once the send completes
+     * the callback {@link javax.websocket.SendHandler} is called. (Note: The callback is initiated for
+     * sending the data only. It does NOT mean that anything was received for that send.)
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
      * @param handler The callback to initiate when sending is completed.
-     * @return CompletableFuture<JSONObject> future which will complete when ???
      */
-    protected CompletableFuture<JSONObject> sendPublish(long sequence, JSONObject json, SendHandler handler) {
-        CompletableFuture<JSONObject> result = new CompletableFuture<>();
-
+    protected void sendPublish(long sequence, JSONObject json, SendHandler handler) {
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {
@@ -307,11 +303,18 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 handler.onResult(sendResult);
             }
         });
-
-        result.complete(new JSONObject());
-        return result;
     }
 
+    /**
+     * Sends the given request, represented by the {@link org.json.JSONObject}, to the server and maps the
+     * eventual result to be stored in a {@link java.util.concurrent.CompletableFuture} with the sequence
+     * number of the message. Once the send is completed, the callback {@link javax.websocket.SendHandler}
+     * is called. (Note: the callback is initiated after success or failure to send, not after receiving.)
+     * @param sequence Sequence number of the message
+     * @param json The request to send to the Pub/Sub server
+     * @param handler The callback to initiate when sending is completed.
+     * @return CompletableFuture<JSONObject> future which will complete when ???
+     */
     protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         outstanding.put(sequence, result);

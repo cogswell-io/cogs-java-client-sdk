@@ -516,7 +516,28 @@ class TestPubSubSocketSuccess extends PubSubSocket
         return outcome;
     }
 
-    protected CompletableFuture<JSONObject> sendPublish(long sequence, JSONObject json, SendHandler handler) {
+    protected void sendPublish(long sequence, JSONObject json, SendHandler handler) {
+        String channel = json.getString("chan");
+        String msg = json.getString("msg");
+
+        JSONObject publishMessage = new JSONObject()
+            .put("id", UUID.randomUUID().toString())
+            .put("action", "msg")
+            .put("time", Instant.now().toString())
+            .put("chan", channel)
+            .put("msg", msg);
+
+        handlers.get(channel).onMessage(
+            new PubSubMessageRecord(
+                publishMessage.getString("chan"),
+                publishMessage.getString("msg"),
+                publishMessage.getString("time"),
+                publishMessage.getString("id")
+            )
+        );
+    }
+
+    protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> outcome = new CompletableFuture<>();
 
         String channel = json.getString("chan");

@@ -442,13 +442,8 @@ class TestPubSubSocketFailure extends PubSubSocket
         return outcome;
     }
 
-    protected CompletableFuture<JSONObject> sendPublish(long sequence, JSONObject json, SendHandler handler) {
-        CompletableFuture<JSONObject> outcome = new CompletableFuture<>();
+    protected void sendPublish(long sequence, JSONObject json, SendHandler handler) {
         Exception sendException = new Exception(ExceptionType.SEND.toString());
-
-        outcome.completeExceptionally(sendException);
         handler.onResult(new SendResult(sendException));
-
-        return outcome;
     }
 }
