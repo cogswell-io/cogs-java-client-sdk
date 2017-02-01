@@ -31,12 +31,12 @@ import com.gambit.sdk.pubsub.handlers.*;
  */
 public class PubSubSocket extends Endpoint implements MessageHandler.Whole<String>
 {
-    /*public static CompletableFuture<PubSubSocket> connectSocket(List<String> projectKeys, PubSubOptions options) {
+    public static CompletableFuture<PubSubSocket> connectSocket(List<String> projectKeys, PubSubOptions options) {
         CompletableFuture<PubSubSocket> future = new CompletableFuture<>();
-
-        PubSubSocket socket = new PubSubSocket(projectKeys, options);
         
         try {
+            PubSubSocket socket = new PubSubSocket(projectKeys, options);
+
             socket.connect()
                 .thenAcceptAsync((invalid) -> {
                     future.complete(socket);
@@ -51,19 +51,19 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         }
 
         return future;
-    }*/
+    }
 
     /**
      * This is the shortest default delay that the socket will wait between reconnects
      * Current it is set to 5 seconds = 5 s * 1000 ms/s = 5000 ms.
      */
-    private static final long DEFAULT_RECONNECT_DELAY = 5000;
+    private static final long DEFAULT_RECONNECT_DELAY = 5000L; // 5 seconds
 
     /**
      * This is the longest the socket will wait between reconnects before giving up.
      * Currently it is set to 2 minutes = 2 min * 60 s/min * 1000 ms/s = 120000 ms.
      */
-    private static final long MAX_RECONNECT_DELAY = 120000; // 2 minutes
+    private static final long MAX_RECONNECT_DELAY = 120000L; // 2 minutes
 
     /**
      * The {@link PubSubSocketConfigurator} used when creating this PubSubSocket.
@@ -147,6 +147,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     protected PubSubSocket() {
         this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
         this.outstanding = Collections.synchronizedMap(new Hashtable<>());
+        this.autoReconnectDelay = new AtomicLong(DEFAULT_RECONNECT_DELAY);
         this.isConnected = new AtomicBoolean(false);
         this.options = new PubSubOptions();
     }
@@ -178,8 +179,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         this.autoReconnectDelay = new AtomicLong(options.getConnectTimeout());
         this.isConnected = new AtomicBoolean(false);
         this.options = options;
-
-        connect();
     }
 
     /**
@@ -254,7 +253,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     public void close() 
         throws IOException 
     {
-
+        autoReconnect.set(false);
         session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Initiated a Standard Close"));
     }
 
@@ -309,6 +308,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 handler.onResult(sendResult);
             }
         });
+
         return result;
     }
 
@@ -317,50 +317,82 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @throws DeploymentException
      * @throws IOException
      */
-    private void connect() 
-        throws DeploymentException, IOException, PubSubException
-    {
-        //CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
+    private CompletableFuture<Void> connect() {
+        // Code Information: The connectToServer will block until it connects or throws an exception. Within Tyrus
+        //                   there is an asyncConnectToServer method which returns a java.util.Future, but Futures
+        //                   in java are blocking once get() is called on them.
+
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
             ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
-            // Design Decision: connectToServer blocks until connects, or throws an Exception.
-            //                  Now, Tyrus does offer asyncConnectToServer, but the return is
-            //                  a java.util.concurrent.Future, which isn't truly asynchronous.
-            //                  Thus, we choose not to even pretend that this is asynchronous.
             if(container != null) {
-                //try {
+                try {
                     session = container.connectToServer(this, config, URI.create(options.getUrl()));
                     server = session.getAsyncRemote();
-                    //future.complete(null);
-                //}
-                //catch(Exception e) {
-                    //future.completeExceptionally(e);
-                //}
+                }
+                catch(Exception e) {
+                    throw new CompletionException(e);
+                }
             }
             else {
                 PubSubException e = new PubSubException("There was no socket container implementation found.");; 
-                //future.completeExceptionally(e);
-                throw e;
+                throw new CompletionException(e);
             }
 
             if(session == null) {
                 PubSubException e = new PubSubException("Could not instantiate connection to server.");
-                //future.completeExceptionally(e);
-                throw e;
+                throw new CompletionException(e);
             }
-        //});
+        });
 
-        //return future;
+        return future;
     }
 
-    private void reconnect() {
+    /**
+     * Attempts to reconnects a socket that has been dropped for any reason other than intentionally and cleanly disconnecting
+     * @return CompletableFuture<Void> future that completes successfully when connected, with an error otherwise
+     * @throws CompletionException Contains the cause of being unable to reconnect, if such occurs
+     */
+    private CompletableFuture<Void> reconnect() {
+        return connect()
+            .thenAcceptAsync((invalid) -> {
+                if(reconnectHandler != null) {
+                    reconnectHandler.onReconnect();
+                }
+            })
+            .exceptionally((error) -> {
+                if(errorHandler != null) {
+                    errorHandler.onError(error, null, null);
+                }
+
+                throw new CompletionException(error);
+            });
+    }
+
+    /**
+     * Simple method to spin up new thread that calls provided Runnable no sooner than the given delay in ms.
+     * @param runnable The runnable that will be called after the given delay
+     * @param delay The time in milliseconds to wait before calling the given runnable
+     * @throws InterruptedException
+     */
+    private void setTimeout(Runnable runnable, long delay)
+        throws InterruptedException
+    {
         try {
-            connect();
+            new Thread(() -> {
+                try {
+                    Thread.sleep(delay);
+                    runnable.run();
+                }
+                catch(InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }).start();
         }
-        catch(Exception e) {
-            if(errorHandler != null) {
-                errorHandler.onError(e, null, null);
+        catch(RuntimeException e) {
+            if(e.getCause() instanceof InterruptedException) {
+                throw e;
             }
         }
     }
@@ -394,10 +426,15 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         if(options.getAutoReconnect() == true) {
             do {
                 try {
-                    connect();
+                    reconnect();
                 }
                 catch(Exception e) {
-                    setTimeout(() -> reconnect(), autoReconnectDelay.get());
+                    try {
+                        setTimeout(this::reconnect, autoReconnectDelay.get());
+                    }
+                    catch(Exception ex) {
+                        // TODO: Log the exception and continue reconnect with the next delay
+                    }
 
                     previousDelay = autoReconnectDelay.get();
                     minimumDelay = Math.max(DEFAULT_RECONNECT_DELAY, previousDelay);
@@ -406,18 +443,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
             } while(isConnected.get() != true && autoReconnectDelay.get() < MAX_RECONNECT_DELAY);
         }
-    }
-
-    private static void setTimeout(Runnable runnable, long delay) {
-        new Thread(() -> {
-            try {
-                Thread.sleep(delay);
-                runnable.run();
-            }
-            catch(Exception e) {
-                // What to do here?
-            }
-        }).start();
     }
 
     /**

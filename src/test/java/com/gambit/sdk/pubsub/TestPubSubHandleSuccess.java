@@ -288,7 +288,7 @@ public class TestPubSubHandleSuccess {
                 }
             })
             .thenComposeAsync((subscriptions) -> {
-                return testHandle.publish(channel, message);
+                return testHandle.publish(channel, message, null);
             })
             .thenAcceptAsync((sequence) -> {
                 // Reaching here is an okay thing.
@@ -315,7 +315,79 @@ public class TestPubSubHandleSuccess {
             fail("There was an exception thrown: " + ex.getMessage());
             ex.printStackTrace();
         }
-            
+    }
+
+    @Test
+    public void testPublishWithAckSuccessful() {
+        try {
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketSuccess());
+            CountDownLatch signal = new CountDownLatch(2);
+
+            String channel = "COOKING";
+            String message = "Next Week: We show you how to clean and cook with leeks.";
+            StringBuffer publishAck = new StringBuffer();
+            StringBuffer messageUuid = new StringBuffer();
+
+            testHandle.subscribe(channel, (record) -> {
+                try {
+                    assertEquals(
+                        "The record message content should match the message that was actually published.",
+                        message,
+                        record.getMessage()
+                    );
+
+                    assertEquals(
+                        "The record channel should match the channel on which the message was actually published.",
+                        channel,
+                        record.getChannel()
+                    );
+
+                    messageUuid.append(record.getId().toString());
+
+                    signal.countDown();
+                }
+                catch(AssertionError e) {
+                    throw new CompletionException(e);
+                }
+            })
+            .thenComposeAsync((subscriptions) -> {
+                return testHandle.publishWithAck(channel, message, null);
+            })
+            .thenAcceptAsync((uuid) -> {
+                publishAck.append(uuid.toString());
+                signal.countDown();
+            })
+            .exceptionally((error) -> {
+                hasError = true;
+                errorMessage = "There was an error with completion: " + error.getMessage();
+                signal.countDown();
+                return null;
+            });
+
+            try {
+                signal.await();
+
+                assertEquals(
+                    "The string-represented uuids from the message in publishing and receiving should be the same.",
+                    publishAck.toString(),
+                    messageUuid.toString()
+                );
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
+            }
+            catch(AssertionError err) {
+                fail("The strings were not appropriate equal: " + err.getMessage());
+            }
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
     }
 
     @Test
@@ -446,7 +518,6 @@ class TestPubSubSocketSuccess extends PubSubSocket
 
     protected CompletableFuture<JSONObject> sendPublish(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> outcome = new CompletableFuture<>();
-        outcome.complete(new JSONObject());
 
         String channel = json.getString("chan");
         String msg = json.getString("msg");
@@ -465,6 +536,13 @@ class TestPubSubSocketSuccess extends PubSubSocket
                 publishMessage.getString("time"),
                 publishMessage.getString("id")
             )
+        );
+
+        outcome.complete(new JSONObject()
+            .put("seq", sequence)
+            .put("action", "pub")
+            .put("code", 200)
+            .put("id", publishMessage.getString("id"))
         );
 
         return outcome;

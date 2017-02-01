@@ -297,7 +297,7 @@ public class TestPubSubSocket
         }
     }
 
-    // The expectations when this occurs are not yet known
+    //The expectations when this occurs are not yet known
     //@Test
     public void testOnMessageInvalidRequestResponse() {
         try {

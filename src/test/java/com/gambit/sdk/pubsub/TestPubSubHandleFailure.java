@@ -230,7 +230,57 @@ public class TestPubSubHandleFailure {
             String channel = "Health & Cooking";
             String message = "\"What, do those go together?\" said the chef.";
 
-            testHandle.publish(channel, message)
+            testHandle.publish(channel, message, null)
+                .thenAcceptAsync((subscriptions) -> {
+                    hasError = true;
+                    errorMessage = "There should have not been any subscriptions made: " + subscriptions.toString(); 
+                    signal.countDown();
+                })
+                .exceptionally((error) -> {
+                    try {
+                        assertEquals(
+                            "The message in the cause of the completion exception should be about the session.",
+                            TestPubSubSocketFailure.ExceptionType.SEND.toString(),
+                            error.getCause().getMessage()
+                        );
+                    }
+                    catch(AssertionError e) {
+                        hasError = true;
+                        errorMessage = e.getMessage();
+                    }
+                    
+                    signal.countDown();
+
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(hasError) {
+                    fail(errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("There was an error waiting for the test to finish: " + e.getMessage());
+            }
+        }
+        catch(Throwable e) {
+            fail("There was an exception thrown: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testPublishWithAckFailure() {
+        try {
+            PubSubHandle testHandle = new PubSubHandle(new TestPubSubSocketFailure());
+            CountDownLatch signal = new CountDownLatch(1);
+
+            String channel = "Health & Cooking";
+            String message = "\"What, do those go together?\" said the chef.";
+
+            testHandle.publish(channel, message, null)
                 .thenAcceptAsync((subscriptions) -> {
                     hasError = true;
                     errorMessage = "There should have not been any subscriptions made: " + subscriptions.toString(); 

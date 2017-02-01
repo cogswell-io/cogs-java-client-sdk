@@ -206,7 +206,7 @@ public class PubSubHandle {
      * @param message The actual content of the message to publish on the given channel.
      * @return CompletableFuture<Long> Future completed with sequence of message on successful send, error otherwise 
      */
-    public CompletableFuture<Long> publish(String channel, String message) {
+    public CompletableFuture<Long> publish(String channel, String message, PubSubErrorHandler handler) {
         CompletableFuture<Long> outcome = new CompletableFuture<>();
         long seq = sequence.getAndIncrement();
 
@@ -214,7 +214,8 @@ public class PubSubHandle {
             .put("seq", seq)
             .put("action", "pub")
             .put("chan", channel)
-            .put("msg", message);
+            .put("msg", message)
+            .put("ack", false);
 
         socket.sendPublish(seq, publish, (result) -> {
             if(result.isOK()) {
@@ -222,7 +223,48 @@ public class PubSubHandle {
             }
             else {
                 outcome.completeExceptionally(result.getException());
+
+                if(handler != null) {
+                    handler.onError(result.getException(), new Long(seq), channel);
+                }
             }
+        });
+
+        return outcome;
+    }
+
+    public CompletableFuture<UUID> publishWithAck(String channel, String message, PubSubErrorHandler handler) {
+        CompletableFuture<UUID> outcome = new CompletableFuture<>();
+        long seq = sequence.getAndIncrement();
+
+        JSONObject publish = new JSONObject()
+            .put("seq", seq)
+            .put("action", "pub")
+            .put("chan", channel)
+            .put("msg", message)
+            .put("ack", true);
+
+        socket.sendPublish(seq, publish, (sendResult) -> {
+            if(!sendResult.isOK()) {
+                outcome.completeExceptionally(sendResult.getException());
+                
+                if(handler != null) {
+                    handler.onError(sendResult.getException(), new Long(seq), channel);
+                }
+            }
+        })
+        .thenAcceptAsync((json) -> {
+            UUID uuid = UUID.fromString(json.getString("id"));
+            outcome.complete(uuid);
+        })
+        .exceptionally((error) -> {
+            outcome.completeExceptionally(error);
+            
+            if(handler != null) {
+                handler.onError(error, new Long(seq), channel);
+            }
+
+            return null;
         });
 
         return outcome;

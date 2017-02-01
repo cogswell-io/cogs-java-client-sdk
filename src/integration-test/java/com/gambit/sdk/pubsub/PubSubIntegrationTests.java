@@ -64,6 +64,7 @@ public class PubSubIntegrationTests {
     }
 
     private static PubSubHandle pubsubHandle;
+    private static PubSubHandle secondHandle;
     private static String errorMessage;
     private static boolean isError;
 
@@ -195,7 +196,7 @@ public class PubSubIntegrationTests {
                     });
                 })
                 .thenComposeAsync((sequence) -> {
-                    return pubsubHandle.publish(testChan, testMsg);
+                    return pubsubHandle.publish(testChan, testMsg, null);
                 })
                 .exceptionally((error) -> {
                     return null;
@@ -363,10 +364,10 @@ public class PubSubIntegrationTests {
                     });
                 })
                 .thenComposeAsync((chans) -> {
-                    return pubsubHandle.publish(publishChan, publishMessage);
+                    return pubsubHandle.publish(publishChan, publishMessage, null);
                 })
                 .thenAcceptAsync((sequence) -> {
-                    pubsubHandle.publish(subscribeChan, subscribeMessage);
+                    pubsubHandle.publish(subscribeChan, subscribeMessage, null);
                 })
                 .exceptionally((error) -> {
                     return null;
@@ -386,6 +387,96 @@ public class PubSubIntegrationTests {
             pubsubHandle.close()
                 .thenComposeAsync((channels) -> {
                     return keyServer.deleteKey(ident);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testTwoHandlesReceiveSameMessage() {
+        try {
+            KeyServer keyServer = new KeyServer("http://localhost:8778");
+            PubSubSDK pubsub = PubSubSDK.getInstance();
+
+            JSONObject keyOne = getRandomProjectKey();
+            String identOne = keyOne.getString("identity");
+            List<String> permissionKeysOne = buildPermissionKeys(keyOne);
+
+            JSONObject keyTwo = getRandomProjectKey();
+            String identTwo = keyTwo.getString("identity");
+            List<String> permissionKeysTwo = buildPermissionKeys(keyTwo);
+
+            CountDownLatch signal = new CountDownLatch(2);
+            String chan = "BOOKS & MOVIES";
+            String message = "A good book made into a good movie is a good thing, but it doesn't happen often.";
+
+            StringBuffer msgFromOne = new StringBuffer();
+            StringBuffer msgFromTwo = new StringBuffer();
+
+            keyServer.createKey(keyOne)
+                .thenComposeAsync((result) -> {
+                    return pubsub.connect(permissionKeysOne);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+                    return keyServer.createKey(keyTwo);
+                })
+                .thenComposeAsync((result) -> {
+                    return pubsub.connect(permissionKeysTwo);
+                })
+                .thenComposeAsync((handle) -> {
+                    secondHandle = handle;
+                    
+                    return pubsubHandle.subscribe(chan, (record) -> {
+                        msgFromOne.append(record.getMessage());
+                        signal.countDown();
+                    });
+                })
+                .thenComposeAsync((subsOne) -> {
+                    return secondHandle.subscribe(chan, (record) -> {
+                        msgFromTwo.append(record.getMessage());
+                        signal.countDown();
+                    });
+                })
+                .thenAcceptAsync((sequence) -> {
+                    pubsubHandle.publish(chan, message, null);
+                })
+                .exceptionally((error) -> {
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                assertEquals(
+                    "The two messages received on different sockets should be the same message.",
+                    msgFromOne.toString(),
+                    msgFromTwo.toString()
+                );
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+
+            pubsubHandle.close()
+                .thenComposeAsync((channels) -> {
+                    return secondHandle.close();
+                })
+                .thenComposeAsync((channels) -> {
+                    return keyServer.deleteKey(identOne);
+                })
+                .thenAcceptAsync((response) -> {
+                    keyServer.deleteKey(identTwo);
                 })
                 .exceptionally((error) -> {
                     return null;
