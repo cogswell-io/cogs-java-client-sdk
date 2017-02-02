@@ -299,6 +299,7 @@ public class PubSubHandle {
      * @param messageHandler The {@link PubSubMessageHandler} that should be registered
      */
     public void onMessage(PubSubMessageHandler messageHandler) {
+        socket.addMessageHandler(messageHandler);
     }
 
     /**
@@ -306,6 +307,7 @@ public class PubSubHandle {
      * @param reconnectHandler The {@link PubSubReconnectHandler} that should be registered
      */
     public void onReconnect(PubSubReconnectHandler reconnectHandler) {
+        socket.addReconnectHandler(reconnectHandler);
     }
 
     /**
@@ -313,6 +315,7 @@ public class PubSubHandle {
      * @param rawRecordHandler The {@link PubSubRawRecordHandler} that should be registered 
      */
     public void onRawRecord(PubSubRawRecordHandler rawRecordHandler) {
+        socket.addRawRecordHandler(rawRecordHandler);
     }
 
     /**
@@ -320,6 +323,7 @@ public class PubSubHandle {
      * @param closeHandler The {@link PubSubCloseHandler} that should be registered
      */
     public void onClose(PubSubCloseHandler closeHandler) {
+        socket.addCloseHandler(closeHandler);
     }
 
     /**
@@ -327,5 +331,14 @@ public class PubSubHandle {
      * @param errorHandler The {@link PubSubErrorHandler} that should be registered
      */
     public void onError(PubSubErrorHandler errorHandler) {
+        socket.addErrorHandler(errorHandler);
+    }
+
+    /**
+     * Registers a handler for when a reconnect forces a new session
+     * @param newSessionHandler THe {@link PubSubNewSessionHandler} that should be registered
+     */
+    public void onNewSession(PubSubNewSessionHandler newSessionHandler) {
+        socket.addNewSessionHandler(newSessionHandler);
     }
 }

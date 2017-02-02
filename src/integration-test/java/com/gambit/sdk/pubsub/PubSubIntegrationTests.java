@@ -1,6 +1,7 @@
 package com.gambit.sdk.pubsub;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
@@ -67,7 +68,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
+            JSONObject keys = getSecondaryKeys();
 
             List<String> permissions = buildPermissionKeys(keys);
             String identity = keys.getString("identity");
@@ -132,6 +133,7 @@ public class PubSubIntegrationTests {
             }
         }
         catch(Throwable e) {
+            System.out.println("Exception Class: " + e.getClass());
             fail("There was an exception thrown: " + e.getMessage());
             e.printStackTrace();
         }
@@ -499,6 +501,205 @@ public class PubSubIntegrationTests {
                 .exceptionally((error) -> {
                     return null;
                 });
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testGetSession() {
+        try {
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
+
+            List<String> permissions = buildPermissionKeys(keys);
+
+            CountDownLatch signal = new CountDownLatch(1);
+
+            pubsubSDK.connect(permissions, options)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    pubsubHandle.onClose((error) -> {
+                        signal.countDown();
+                    });
+
+                    return pubsubHandle.getSessionUuid();
+                })
+                .thenComposeAsync((uuid) -> {
+                    try {
+                        assertNotNull(
+                            "The UUID obtained from the handle should not be null",
+                            uuid
+                        );
+                    }
+                    catch(AssertionError e) {
+                        isError = true;
+                        errorMessage = e.getMessage();
+                    }
+
+                    return pubsubHandle.close();
+                })
+                .thenAcceptAsync((subs) -> {
+                    // No need to do anything here
+                })
+                .exceptionally((error) -> {
+                    isError = true;
+                    errorMessage = error.getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                if(isError) {
+                    fail("An error occurred: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testOnRawRecordHandler() {
+        try {
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
+
+            List<String> permissions = buildPermissionKeys(keys);
+
+            CountDownLatch signal = new CountDownLatch(1);
+            String chan = "BOOKS & MOVIES";
+            String message = "A good book made into a good movie is a good thing, but it doesn't happen often.";
+
+            pubsubSDK.connect(permissions, options)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    pubsubHandle.onRawRecord((record) -> {
+                        JSONObject json = new JSONObject(record);
+
+                        if(json.getString("action").equals("msg")) {
+                            try {
+                                assertEquals(
+                                    "The string after converting to json should be the one that was published.",
+                                    message,
+                                    json.getString("message")
+                                );
+                            }
+                            catch(AssertionError e) {
+                                isError = true;
+                                errorMessage = e.getMessage();
+                            }
+                        }
+
+                        signal.countDown();
+                    });
+
+                    return pubsubHandle.subscribe(chan, (record) -> {});
+                })
+                .thenAcceptAsync((subs) -> {
+                    pubsubHandle.publish(chan, message, null);
+                })
+                .exceptionally((error) -> {
+                    isError = true;
+                    errorMessage = error.getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                CountDownLatch finish = new CountDownLatch(1);
+
+                pubsubHandle.close()
+                    .thenAcceptAsync((subs) -> {
+                        finish.countDown();
+                    })
+                    .exceptionally((error) -> {
+                        isError = true;
+                        errorMessage = error.getMessage();
+                        error.printStackTrace();
+                        finish.countDown();
+                        return null;
+                    });
+
+                finish.await();
+
+                if(isError) {
+                    fail("An error occurred: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testOnCloseHandler() {
+        try {
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
+
+            List<String> permissions = buildPermissionKeys(keys);
+
+            AtomicBoolean isClosed = new AtomicBoolean(false);
+            CountDownLatch signal = new CountDownLatch(1);
+
+            pubsubSDK.connect(permissions, options)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    pubsubHandle.onClose((error) -> {
+                        isClosed.set(true);
+                        signal.countDown();
+                    });
+
+                    return pubsubHandle.close();
+                })
+                .thenAcceptAsync((subs) -> {
+                    // No need to put anything here
+                })
+                .exceptionally((error) -> {
+                    isError = true;
+                    errorMessage = error.getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await();
+
+                assertTrue(
+                    "If the thing is not closed, then something went wrong.",
+                    isClosed.get()
+                );
+
+                if(isError) {
+                    fail("An error occurred: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
         }
         catch(Throwable ex) {
             fail("There was an exception thrown: " + ex.getMessage());
