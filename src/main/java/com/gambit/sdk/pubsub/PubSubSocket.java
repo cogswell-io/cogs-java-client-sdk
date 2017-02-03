@@ -26,12 +26,19 @@ import com.gambit.sdk.pubsub.exceptions.*;
 import com.gambit.sdk.pubsub.handlers.*;
 
 /**
- * PubSubSocket is used to wrap the logic of Java websockets by extending {@link javax.websocket.Endpoint}
- * and implementing {@link javax.websocket.MessageHandler.Whole}. It also servers the purpose of tracking
- * and routing incoming and outgoing message to and from the Pub/Sub server.
+ * Wraps the logic of Java websockets by extending {@link javax.websocket.Endpoint} and implementing 
+ * {@link javax.websocket.MessageHandler.Whole}. It also tracks and routes both incoming and outgoing 
+ * message to and from Cogswell Pub/Sub.
  */
 public class PubSubSocket extends Endpoint implements MessageHandler.Whole<String>
 {
+    /**
+     * Creates and connects a PubSubSocket to Cogswell Pub/Sub using the given project keys and options.
+     * 
+     * @param projectKeys List of project keys to use for authenticating the connection to be establish.
+     * @param options     {@link PubSubOptions} to use for the connection.
+     * @return {@code CompletableFuture<PubSubSocket>} Completes with connected underlying PubSubSocket on success.
+     */
     public static CompletableFuture<PubSubSocket> connectSocket(List<String> projectKeys, PubSubOptions options) {
         CompletableFuture<PubSubSocket> future = new CompletableFuture<>();
         
@@ -166,7 +173,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         this.autoReconnectDelay = new AtomicLong(DEFAULT_RECONNECT_DELAY);
         this.autoReconnect = new AtomicBoolean(false);
         this.isConnected = new AtomicBoolean(false);
-        this.options = new PubSubOptions();
+
+        this.options = PubSubOptions.DEFAULT_OPTIONS;
     }
 
     /**
@@ -180,8 +188,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     }
 
     /**
-     * Creates a connection to the Pub/Sub server given a {@link PubSubSocketConfigurator} and {@link PubSubOptions}
-     * @param config The configuration requested for the connection represented by this PubSubSocket
+     * Creates a connection to the Pub/Sub with the given projectKeys and options
+     * @param projectKeys The permissions keys requested for interacting with the Pub/Sub server
      * @param options The options requested for the connection represented by this PubSubSocket
      * @throws DeploymentException
      * @throws IOException
@@ -222,7 +230,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * number of the message.
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
-     * @return CompletableFuture<JSONObject> future that will contain server response to given request
+     * @return CompletableFuture&lt;JSONObject&gt; future that will contain server response to given request
      */
     protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
@@ -272,7 +280,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
      * @param handler The callback to initiate when sending is completed.
-     * @return CompletableFuture<JSONObject> future which will complete when ???
+     * @return CompletableFuture&lt;JSONObject&gt; future which will complete when ???
      */
     protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();

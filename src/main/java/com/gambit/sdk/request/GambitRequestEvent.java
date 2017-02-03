@@ -119,7 +119,7 @@ public class GambitRequestEvent extends GambitRequest {
          *     <li>2016-07-01T09:36:42.520Z</li>
          *     <li>2016-07-01T09:36:42+04:00</li>
          * </ul>
-         * </p>
+         * 
          *
          * @param timestamp The timestamp of the event.
          *

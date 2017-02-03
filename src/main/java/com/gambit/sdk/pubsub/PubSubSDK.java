@@ -9,7 +9,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.List;
 
 /**
- * The main class that all SDK users will use to work with the Pub/Sub SDK. 
+ * All initial connections made to Cogswell Pub/Sub are preformed through this class.
+ * Thereafter, all operations are preformed through an instance of {@link PubSubHandle} 
  */
 public class PubSubSDK {
     /**
@@ -37,19 +38,21 @@ public class PubSubSDK {
     }
 
     /**
-     * Creates a connection with the given project keys, and the defaults set for the {@link PubSubOptions}
-     * @param projectKeys The list of requested keys for the connection to be established
-     * @return CompletableFuture<PubSubHandle> future that will contain {@PubSubHandle} used for making SDK requests 
+     * Creates a connection with the given project keys, and defaults set for {@link PubSubOptions}.
+     *
+     * @param projectKeys List of project keys to use for authenticating the connection to establish.
+     * @return {@code CompletableFuture<PubSubHandle>} Completes with a {@link PubSubHandle} used to make SDK requests. 
      */
     public CompletableFuture<PubSubHandle> connect(List<String> projectKeys) {
-        return connect(projectKeys, new PubSubOptions());
+        return connect(projectKeys, PubSubOptions.DEFAULT_OPTIONS);
     }
 
     /**
-     * Creates a connection with the given project keys, and the given {@link PubSubOptions}
-     * @param projectKeys The list of requested keys for the connection to be established
-     * @param options The {@link PubSubOptions} to use for the connection to be established
-     * @return CompletableFuture<PubSubHandle> future that will contain {@PubSubHandle} used for making SDK requests 
+     * Creates a connection with the given project keys, and the given {@link PubSubOptions}.
+     *
+     * @param projectKeys List of project keys to use for authenticating the connection to be establish.
+     * @param options     {@link PubSubOptions} to use for the connection.
+     * @return {@code CompletableFuture<PubSubHandle>} Completes with a {@link PubSubHandle} used to make SDK requests. 
      */
     public CompletableFuture<PubSubHandle> connect(List<String> projectKeys, PubSubOptions options) {
         CompletableFuture<PubSubHandle> future = new CompletableFuture<>();

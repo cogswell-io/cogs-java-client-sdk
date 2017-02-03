@@ -20,10 +20,11 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
     private String payloadHmac;
 
     /**
-     * Create the {@link PubSubSocketConfigurator} given a list project keys
-     * @param projectKeys The keys used for constructing the payload
+     * Creates the {@link PubSubSocketConfigurator} given the list project keys for authentication
+     *
+     * @param projectKeys Project keys used to construct the payload for authentication
      */
-    public PubSubSocketConfigurator(List<String> projectKeys) {
+    protected PubSubSocketConfigurator(List<String> projectKeys) {
         try {
             PubSubAuth auth = new PubSubAuth(projectKeys);
             payload = auth.getPayload();
@@ -36,8 +37,9 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
     }
 
     /**
-     * Add the appropriate headers for connection to Pub/Sub. The method is
-     * called before initial handshake when connecting to associated websocket. 
+     * Adds the appropriate headers for connecting to Cogswell Pub/Sub.
+     * The method is called before initial handshake when connecting to associated websocket.
+     * 
      * @param headers The HTML request headers to be modified
      */
     @Override

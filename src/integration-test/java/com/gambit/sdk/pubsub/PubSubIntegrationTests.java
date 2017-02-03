@@ -68,7 +68,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getSecondaryKeys();
+            JSONObject keys = getMainKeys();
 
             List<String> permissions = buildPermissionKeys(keys);
             String identity = keys.getString("identity");

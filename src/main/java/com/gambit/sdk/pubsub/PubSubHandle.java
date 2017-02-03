@@ -25,24 +25,25 @@ import org.json.JSONArray;
 import com.gambit.sdk.pubsub.handlers.*;
 
 /**
- * Users of the SDK receive an instance of this class when connecting to Pub/Sub.
- * All Pub/Sub operations available to users of the SDK are made through an instance of this class.
+ * Represents user endpoint to Cogswell Pub/Sub and provides methods to perform available Pub/Sub operations.
  */
 public class PubSubHandle {
     private AtomicLong sequence;
     private PubSubSocket socket;
 
     /**
-     * Construct a handle that uses the given {@link PubSubSocket} to connect to the Pub/Sub system
+     * Creates an endpoint to Cogswell Pub/Sub using the given {@link PubSubSocket} as the underlying connection.
+     *
+     * @param socket {@link PubSubSocket} which contains the underlying connection to Cogswell Pub/Sub
      */
-    public PubSubHandle(PubSubSocket socket) {
+    protected PubSubHandle(PubSubSocket socket) {
         this.sequence = new AtomicLong(0);
         this.socket = socket;
     }
 
     /**
-     * Request the UUID of the current session/connection with the Pub/Sub system.
-     * @return CompletableFuture<UUID> Future that completes with Session UUID on success, and with error otherwise   
+     * Fetches UUID of current session, which enables caching if caching is enabled on the project. 
+     * @return {@code CompletableFuture<UUID>} Completes with UUID of current session on success.   
      */
     public CompletableFuture<UUID> getSessionUuid() {
         CompletableFuture<UUID> outcome = new CompletableFuture<>();
@@ -66,11 +67,11 @@ public class PubSubHandle {
     }
 
     /**
-     * Subscribe to the given channel, and process messages from channel with the given {@link PubSubMessageHandler}.
-     * THe provided handler cannot be null.
-     * @param channel The name of the channel to which to subscribe
-     * @param messageHandler The handler which will handle Pub/Sub messages received on the given channel
-     * @return CompletableFuture<List<String>> Future completing with list of subscriptions on success, error otherwise 
+     * Subscribes to {@code channel}, processing messages from {@code channel} using provided {@link PubSubMessageHandler}
+     *
+     * @param channel        Name of the channel to which to subscribe.
+     * @param messageHandler Handler that receives message from {@code channel}. May NOT be null.
+     * @return {@code CompletableFuture<List<String>>} Completes with list of all current subscriptions on success. 
      */
     public CompletableFuture<List<String>> subscribe(String channel, PubSubMessageHandler messageHandler) {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
@@ -104,9 +105,10 @@ public class PubSubHandle {
     }
 
     /**
-     * Unsubscribe to the given channel, thus stop receiving and handling messages from that channel as well.
-     * @param channel THe name of the channel from which to unsubscribe
-     * @return CompletableFuture<List<String>> Future completing with list of subscriptions on success, error otherwise
+     * Unsubscribes from {@code channel} which stops receipt and handling of messages for {@code channel}.
+     *
+     * @param channel Name of the channel from which to unsubscribe.
+     * @return {@code CompletableFuture<List<String>>} Complets with list of all remaining subscriptions on success.
      */
     public CompletableFuture<List<String>> unsubscribe(String channel) {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
@@ -137,8 +139,9 @@ public class PubSubHandle {
     }
     
     /**
-     * Unsubscribe from all current channel subscriptions
-     * @return CompletableFuture<List<String>> Future completing with list of all unsubscribed channels, error otherwise
+     * Unsubscribes from all channels which stops receipt and handling of message from all channels.
+     *
+     * @return {@code CompletableFuture<List<String>>} Completes with list of channels that have been unsubscribed on success.
      */
     public CompletableFuture<List<String>> unsubscribeAll() {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
@@ -168,8 +171,9 @@ public class PubSubHandle {
     }
 
     /**
-     * Request a list of current subscriptions for the connection
-     * @return CompletableFuture<List<String>> Future completing with list of subscriptions on success, error otherwise
+     * Fetches list of all current subscriptions.
+     *
+     * @return {@code CompletableFuture<List<String>>} Complets with list of all current subscriptions on success.
      */
     public CompletableFuture<List<String>> listSubscriptions() {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
@@ -199,13 +203,14 @@ public class PubSubHandle {
     }
 
     /**
-     * Publish the given message to the given channel. Note that the CompletableFuture returned by this method
-     * indicates success in actually sending the message, but provides no information about whether the message
-     * was received. This is unlike the other methods, which return futures with the results from the server.
-     * @param channel The name of the channel on which to publish the given message.
-     * @param message The actual content of the message to publish on the given channel.
-     * @param handler An error handler that is called if sending fails
-     * @return CompletableFuture<Long> Future completed with sequence of message on successful send, error otherwise 
+     * Publishes {@code message} to {@code channel} without acknowledgement that the message was actually published.
+     * Note: Completion of the returned CompletableFuture indicates success only in sending the message. 
+     *       This method gives no information and no guarantees that the message was actually published.
+     *
+     * @param channel Name of the channel on which to publish the message.
+     * @param message Content of the message to be publish on the given channel.
+     * @param handler Error handler called if <em>sending</em> fails.
+     * @return {@code CompletableFuture<Long>} Completes with sequence number of record sent on a successful send. 
      */
     public CompletableFuture<Long> publish(String channel, String message, PubSubErrorHandler handler) {
         CompletableFuture<Long> outcome = new CompletableFuture<>();
@@ -235,11 +240,12 @@ public class PubSubHandle {
     }
 
     /**
-     * Publish the given message to the given channel, receiving UUID of published message if publish is successful.
-     * @param channel The name of the channel on which to publish the given message.
-     * @param message The actual content of the message to publish on the given channel.
-     * @param handler An error handler called if sending fails, or if the ack is not properly received
-     * @return CompletableFuture<Long> Future completed with sequence of message on successful send, error otherwise 
+     * Publishes {@code message} to {@code channel} with acknowledgement that the message was actually published.
+     *
+     * @param channel Name of the channel on which to publish the message.
+     * @param message Content of the message to be publish on the given channel.
+     * @param handler Error handler called if <em>sending</em> fails.
+     * @return {@code CompletableFuture<UUID>} Complets with UUID of published message on success. 
      */
     public CompletableFuture<UUID> publishWithAck(String channel, String message, PubSubErrorHandler handler) {
         CompletableFuture<UUID> outcome = new CompletableFuture<>();
@@ -279,8 +285,9 @@ public class PubSubHandle {
     }
 
     /**
-     * Close the connection for good.
-     * @return CompletableFuture<List<String>> Future completing with list of subscriptions on success, error otherwise
+     * Closes the connection with Cogswell Pub/Sub and unsubscribes from all channels.
+     *
+     * @return {@code CompletableFuture<List<String>>} Complets with list of channels unsubscribed on success.
      */
     public CompletableFuture<List<String>> close() {
         return unsubscribeAll()
@@ -295,39 +302,44 @@ public class PubSubHandle {
     }
 
     /**
-     * Register a handler for messages from any channel
-     * @param messageHandler The {@link PubSubMessageHandler} that should be registered
+     * Registers a handler to process any published messages received from Cogswell Pub/Sub on any subscribed channels.
+     *
+     * @param messageHandler The {@link PubSubMessageHandler} that should be registered.
      */
     public void onMessage(PubSubMessageHandler messageHandler) {
         socket.addMessageHandler(messageHandler);
     }
 
     /**
-     * Register a handler for reconnect events.
-     * @param reconnectHandler The {@link PubSubReconnectHandler} that should be registered
+     * Registers a handler that is called whenever the underlying connection is re-established.
+     *
+     * @param reconnectHandler The {@link PubSubReconnectHandler} that should be registered.
      */
     public void onReconnect(PubSubReconnectHandler reconnectHandler) {
         socket.addReconnectHandler(reconnectHandler);
     }
 
     /**
-     * Register a handler for whenever a raw JSON (String) record comes through from the Pub/Sub server
-     * @param rawRecordHandler The {@link PubSubRawRecordHandler} that should be registered 
+     * Registers a handler to process every raw record (as a JSON-formatted String) received from Cogswell Pub/Sub.
+     *
+     * @param rawRecordHandler The {@link PubSubRawRecordHandler} that should be registered.
      */
     public void onRawRecord(PubSubRawRecordHandler rawRecordHandler) {
         socket.addRawRecordHandler(rawRecordHandler);
     }
 
     /**
-     * Register a handler for close events
-     * @param closeHandler The {@link PubSubCloseHandler} that should be registered
+     * Registers a handler that is called immediately before the underlying connection to Cogswell Pub/Sub is closed. 
+     *
+     * @param closeHandler The {@link PubSubCloseHandler} that should be registered.
      */
     public void onClose(PubSubCloseHandler closeHandler) {
         socket.addCloseHandler(closeHandler);
     }
 
     /**
-     * Register a handler for errors
+     * Registers a handler that is called whenever there is any error with the underlying connection to Cogswell Pub/Sub
+     *
      * @param errorHandler The {@link PubSubErrorHandler} that should be registered
      */
     public void onError(PubSubErrorHandler errorHandler) {
@@ -335,8 +347,9 @@ public class PubSubHandle {
     }
 
     /**
-     * Registers a handler for when a reconnect forces a new session
-     * @param newSessionHandler THe {@link PubSubNewSessionHandler} that should be registered
+     * Registers a handler that is called whenever reconnecting the underlying connection to Cogswell Pub/Sub forces a new session
+     *
+     * @param newSessionHandler The {@link PubSubNewSessionHandler} that should be registered
      */
     public void onNewSession(PubSubNewSessionHandler newSessionHandler) {
         socket.addNewSessionHandler(newSessionHandler);

@@ -18,7 +18,7 @@ import java.nio.*;
 import java.io.*;
 
 /**
- * This class is used to build the payload to be sent to the Pub/Sub server when initaitng a connection
+ * Used to build the payload sent when trying to establish a websocket connection with Cogswell Pub/Sub
  */
 public class PubSubAuth
 {
@@ -33,51 +33,56 @@ public class PubSubAuth
     private String payloadHmac;
 
     /**
-     * Construct the payload information with the given keys. No session will be restored.
-     * @param keys The keys of permission to be requested when initiating the connection
+     * Build payload using the given project keys. No session will be restored.
+     *
+     * @param keys The permission keys for the permissions requested for the connection
      * @throws NoSuchAlgorithmException
-     * @throws UnsupportedEncodingExceptio
+     * @throws UnsupportedEncodingException
      * @throws InvalidKeyException
      */
-    public PubSubAuth(List<String> keys)
+    protected PubSubAuth(List<String> keys)
         throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException  
     {
         this(keys, null);
     }
 
     /**
-     * Construct the payload information with the given keys and given session to be restored.
-     * @param keys The keys of permission to be requested when initiating the connection
-     * @param session The UUID of the session that should be restored
+     * Build payload using the given keys that also requests the given session be restored.
+     *
+     * @param keys    The permission keys for the permissions requested for the connection.
+     * @param session The uuid of the session that is being requested.
      * @throws NoSuchAlgorithmException
-     * @throws UnsupportedEncodingExceptio
+     * @throws UnsupportedEncodingException
      * @throws InvalidKeyException
      */
-    public PubSubAuth(List<String> keys, UUID session)
+    protected PubSubAuth(List<String> keys, UUID session)
         throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException 
     {
         generatePayload(keys, session);
     }
 
     /**
-     * Get the encoded payload that was created by this PubSubAuth instance.
+     * Gets the encoded payload created by this PubSubAuth.
+     *
      * @return String
      */
-    public String getPayload() { 
+    protected String getPayload() { 
         return payload; 
     }
     
     /**
-     * Get the encoded hmac for the payload that was created by this PubSubAuth instance
+     * Get the encoded payload hamc created by this PubSubAuth.
+     * 
      * @return String
      */
-    public String getHmac() {
+    protected String getHmac() {
         return payloadHmac; 
     }
 
     /**
-     * Generate an encoded payload with the given keys and session
-     * @param keys The keys used to generate the payload with requested permissions
+     * Generates an encoded payload using the provided project keys and session uuid.
+     *
+     * @param keys    The keys used to generate the payload with requested permissions
      * @param session The UUID of the session to restore, if there is one (null if there is not)
      */
     private void generatePayload(List<String> keys, UUID session)
@@ -113,8 +118,9 @@ public class PubSubAuth
     }
 
     /**
-     * Generate an appropriate hmac using the key identity as the secret and the payload as the content
-     * @param keys The keys used in creating the request
+     * Generates appropriate hmac using key identity as secret and payload as content.
+     *
+     * @param keys        The keys used in creating the request
      * @param utf8Payload The UTF-8 encoded payload used for the request
      */
     private void generateHmac(List<String> keys, byte[] utf8Payload)
@@ -144,10 +150,11 @@ public class PubSubAuth
 
     /**
      * Utility function to Bitwise XOR a string of bytes. 
-     * It is assumed the arrays a and b are the same length.
-     * @param a The array of bytes to use as the left operand
-     * @param b The array of bytes to use as the right operand
-     * @return byte[] The result of (a XOR b) as if they were one long bitstring.
+     * It is assumed the arrays {@code a} and {@code b} are the same length.
+     *
+     * @param a       The array of bytes to use as the left operand
+     * @param b       The array of bytes to use as the right operand
+     * @return byte[] The result of ({@code a} XOR {@code b}) as if they were one long bitstring.
      */
     private byte[] byteXor(byte[] a, byte[] b) {
         byte[] result = new byte[a.length];
