@@ -31,8 +31,7 @@ public class PubSubOptions {
      * Initializes this PubSubOptions with all default values
      */
     private PubSubOptions() {
-      this("ws://localhost:8888", true, 30000L, null);
-      //this("wss://api.cogswell.io/pubsub", true, 30000, null);
+      this("wss://api.cogswell.io/pubsub", true, 30000L, null);
     }
 
     /**

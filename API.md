@@ -1,0 +1,416 @@
+# Cogswell Pub/Sub SDK
+
+## Import into Project
+
+The Java Cogswell Pub/Sub SDK is part of the Cogswell Java SDK and can be
+imported into a project either using the .jar files provided or by including
+the following in a Gradle build file.
+
+```gradle
+repositories {
+   jcenter()
+}
+
+dependencies {
+   compile group: 'io.cogswell', name: 'cogs-java-client-sdk', version: '1.?.?'
+}
+```
+
+## Compile and Install the Source
+
+On Linux:
+
+```bash
+./gradlew install
+```
+
+On Windows:
+
+```batch
+gradlew.bat install
+```
+
+## Code Examples
+
+The code examples that follow illustrate the individual methods of the Java
+Cogswell Pub/Sub SDK. The examples illustrate only how the methods might be
+used. For more information, including complete method signatures and possible
+errors, see the documentation at [the Cogswell Pub/Sub website][pubsub-docs].
+
+Additionally, a complete example, illustrating how the methods can be used
+together is provided at the end of this document.
+
+### `PubSubSDK`
+
+#### `getInstance()`
+
+```java
+PubSubSDK sdk = PubSubSDK.getInstance();
+```
+
+#### `connect()`
+
+```java
+// See Javadoc for information on PubSubOptions
+PubSubOptions options = new PubSubOptions();
+
+List<String> permissionKeys;
+permissionKeys.add("R-*-*");
+permissionKeys.add("W-*-*");
+permissionKeys.add("A-*-*");
+
+sdk.connect(permissionKeys, options)
+   .thenAcceptAsync(handle -> {
+      // Use "handle"
+   })
+   .exceptionally(error -> {
+      System.out.println("There was an error: " + error.getMessage());
+      return null;
+   });
+```
+
+### `PubSubHandle`
+
+
+#### `getSessionUuid()`
+
+```java
+pubsubHandle.getSessionUuid()
+   .thenAcceptAsync(uuid -> {
+      System.out.println("Session ID: " + uuid.toString());
+   })
+   .exceptionally(error -> {
+      System.out.println("Error: " + error.getMessage());
+      return null;
+   });
+```
+
+#### `subscribe()`
+
+```java
+String channel = "Channel Name"
+
+pubsubHandle.subscribe(channel, record -> {
+   System.out.println("Message Channel: " + record.getChannel());
+   System.out.println("Message Content: " + record.getMessage());
+   System.out.println("Message ID: " + record.getId());
+   System.out.println("Message Time: " + record.getTimestamp());
+})
+.thenAcceptAsync(subscriptions -> {
+   System.out.println("Current Subscriptions: " + subscriptions);
+})
+.exceptionally(error -> {
+   System.out.println("Error: " + error.getMessage());
+   return null;
+});
+```
+
+#### `unsubscribe()`
+
+```java
+String channel = "Channel Name"
+
+pubsubHandle.unsubscribe(channel)
+   .thenAcceptAsync(subscriptions -> {
+      System.out.println("Current Subscriptions Now: " + subscriptions);
+   })
+   .exceptionally(error -> {
+      System.out.println("Error: " + error.getMessage());
+      return null;
+   });
+```
+
+#### `listSubscriptions()`
+
+```java
+pubsubHandle.listSubscriptions()
+   .thenAcceptAsync(subscriptions -> {
+      System.out.println("Current Subscriptions: " + subscriptions);
+   })
+   .exceptionally(error -> {
+      System.out.println("Error: " + error.getMessage());
+   });
+```
+
+#### `publish()`
+
+```java
+String channel = "Channel Name"
+String message = "Message Content"
+
+pubsubHandle.publish(channel, message, (error, seq, chan) -> {
+   System.out.println("Error Sending Message: " + error.getMessage());
+   System.out.println("Sequence Number: " + seq);
+   System.out.println("Channel: " + chan);
+})
+.thenAcceptAsync(sequence -> {
+   System.out.println("Sent Message with Sequence: " + sequence);
+})
+.exceptionally(error -> {
+   System.out.println("Completion Error: " + error.getMessage());
+   return null;
+});
+```
+
+#### `publishWithAck()`
+
+```java
+String channel = "Channel Name"
+String message = "Message Content"
+
+pubsubHandle.publishWithAck(channel, message, (error, seq, chan) -> {
+   System.out.println("Error Sending Message: " + error.getMessage());
+   System.out.println("Sequence Number: " + seq);
+   System.out.println("Channel: " + chan);
+})
+.thenAcceptAsync(messageUuid -> {
+   System.out.println("Message Sent with UUID: " + messageUuid);
+})
+.exceptionally(error -> {
+   System.out.println("Completion Error: " + error.getMessage());
+   return null;
+});
+```
+
+#### `close()`
+
+```java
+pubsubHandle.close()
+.thenAcceptAsync(subscriptions -> {
+   System.out.println("Subscriptions Ended: " + subscriptions):
+})
+.exceptionally(error -> {
+   System.out.println("Error Closing Connection: " + error.getMessage());
+   return null;
+});
+```
+
+#### `onRawRecord()`
+
+```java
+pubsubHandle.onRawRecord(jsonString -> {
+   System.out.println("Received Record form Pub/Sub: " + jsonString);
+});
+```
+
+#### `onMessage()`
+
+```java
+pubsubHandle.onMessage(record -> {
+   System.out.println("Message Channel: " + record.getChannel());
+   System.out.println("Message Content: " + record.getMessage());
+   System.out.println("Message ID: " + record.getId());
+   System.out.println("Message Time: " + record.getTimestamp());
+});
+```
+
+#### `onError()`
+
+```java
+pubsubHandle.onError((error, sequence, channel) -> {
+   System.out.println("Error in Underlying Connection: " + error.getMessage());
+   System.out.println("Sequence Number: " + sequence);
+   System.out.println("Channel Name: " + channel);
+});
+```
+
+#### `onReconnect()`
+
+```java
+pubsubHandle.onReconnect(() -> {
+   System.out.println("Underlying Connection Required Reconnect");
+});
+```
+
+#### `onClose()`
+
+```java
+pubsubHandle.onClose(error -> {
+   System.out.println("Error Closing Handle: " + error.getMessage());
+});
+```
+
+#### `onNewSession()`
+
+```java
+pubsubHandle.onNewSession(uuid -> {
+   System.out.println("New Session UUID: " + uuid.toString());
+});
+```
+
+## Complete Code Example
+
+The following code example shows a complete, yet simple, use case of the main 
+features of Cogswell Pub/Sub. It uses the SDK to connect to Cogswell Pub/Sub
+and subscribe to a channel, printing every message received on that channel. It
+then publishes a message to that channel, and closes the connection to Cogswell
+Pub/Sub once the message has been received.
+
+To use the following example, some preparation is required:
+
+1. Creating a Cogswell Pub/Sub Project
+  1. Go to the [Cogswell Pub/Sub website][pubsub-site]
+  2. Create and/or Log In to an account
+  3. Click on the 3-Bar Menu at the top left corner to switch to Pub/Sub mode
+  4. Create a Project
+  5. Save the keys presented to you for use in the steps that follow
+2. Creating a Gradle Project with the Code Below
+  1. Install Gradle or Gradlew
+    1. Gradle: [https://docs.gradle.org/current/userguide/installation.html]
+    2. Gradlew: Copy `gradle/*` from this repo into your project root directory
+  2. Add the file below to your project in directory `project-root/src/main/java`
+  3. Paste your keys in the appropriate places in `buildPermissionsKeys()`
+
+##### `CogswellPubSub.java`
+
+
+```java
+import com.gambit.sdk.pubsub.PubSubMessageRecord;
+import com.gambit.sdk.pubsub.PubSubOptions;
+import com.gambit.sdk.pubsub.PubSubSDK;
+import com.gambit.sdk.pubsub.PubSubHandle;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
+
+import org.json.JSONObject;
+
+public class CogswellPubSub {
+    public static PubSubHandle pubsubHandle;
+    public static String errorMessage;
+    public static boolean isError;
+
+    public static void main(String[] args) {
+        // Prepare the keys request for connecting with Cogswell Pub/Sub
+        List<String> projectKeys = buildPermissionKeys();
+
+        // Access the Pub/Sub SDK
+        PubSubSDK sdk = PubSubSDK.getInstance();
+
+        // Plan to wait to receive the message on the channel
+        CountDownLatch signal = new CountDownLatch(1);
+        String channel = "Books & Movies";
+        String message = "It's being called the movie of the century!";
+
+        // Connect to Cogswell Pub/Sub with default options
+        sdk.connect(projectKeys)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    // Subscribe to the channel to which we will publish
+                    return pubsubHandle.subscribe(channel, (record) -> {
+                        System.out.println("Received: " + record.getMessage());
+                        signal.countDown();
+                    });
+                })
+                .thenComposeAsync((subs) -> {
+                    System.out.println("Channels Subscribed: " + subs);
+
+                    // Publish message to channel, recognizing errors on sending
+                    return pubsubHandle.publish(channel, message, (error, seq, chan) -> {
+                        System.out.printf("There was an error sending %d to %s%n", seq, chan);
+
+                        errorMessage = "Error: " + error.getMessage();
+                        isError = true;
+                        signal.countDown();
+                    });
+                })
+                .thenAcceptAsync((seq) -> {
+                    // If the send was successful, we assume message published
+                    // (However, there is no acknowledgement, so don't know.)
+                    if(!isError) {
+                        System.out.println("The Message should be published...");
+                    }
+                })
+                .exceptionally((error) -> {
+                    if(!isError) {
+                        errorMessage = "There was an Error: " + error.getMessage();
+                        isError = true;
+                        signal.countDown();
+                    }
+
+                    return null;
+                });
+
+        try {
+            // Wait 2 seconds to receive a message or encounter an error.
+            signal.await(2, TimeUnit.SECONDS);
+
+            CountDownLatch finish = new CountDownLatch(1);
+
+            // Close the connection to Cogswell Pub/Sub
+            pubsubHandle.close()
+                .thenAcceptAsync((channels) -> {
+                    System.out.println("Channels Closed: " + channels);
+                    finish.countDown();
+                })
+                .exceptionally((error) -> {
+                    if(!isError) {
+                        isError = true;
+                        errorMessage = "There was an Error (Closing): " + error.getMessage();
+                        finish.countDown();
+                    }
+
+                    return null;
+                });
+
+            // Wait 2 seconds for the connection to close or for an error.
+            finish.await(2, TimeUnit.SECONDS);
+
+            // If some error prevent proper completion, note the error.
+            if(isError) {
+                System.out.println(errorMessage);
+            }
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Build the list of permissions requests to connect with Cogswell Pub/Sub
+    private static List<String> buildPermissionKeys() {
+        List<String> permissions = new Vector<>();
+
+        String readKey = "*";
+        String writeKey = "*";
+        String adminKey = "*";
+
+        permissions.add(readKey);
+        permissions.add(writeKey);
+        permissions.add(adminKey);
+
+        return permissions;
+    }
+}
+
+```
+
+[pubsub-docs]: https://cogswell.io/docs/java/client-sdk/api
+
+[pubsub-site]: https://cogswell.io
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
