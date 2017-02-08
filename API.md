@@ -306,7 +306,7 @@ public class CogswellPubSub {
         List<String> projectKeys = buildPermissionKeys();
 
         // Choose the specific options desired for this connection
-        PubSubOptions options = new PubSubOptions("wss://api.cogswell.io/pubsub, false, null, null");
+        PubSubOptions options = new PubSubOptions("wss://api.cogswell.io/pubsub", false, null, null);
 
         // Access the Pub/Sub SDK
         PubSubSDK sdk = PubSubSDK.getInstance();
