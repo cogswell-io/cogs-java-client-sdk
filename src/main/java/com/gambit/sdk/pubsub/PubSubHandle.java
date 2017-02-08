@@ -3,21 +3,13 @@ package com.gambit.sdk.pubsub;
 import java.util.concurrent.atomic.AtomicLong;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Future;
 
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import java.io.IOException;
-
-import javax.websocket.*;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -292,12 +284,7 @@ public class PubSubHandle {
     public CompletableFuture<List<String>> close() {
         return unsubscribeAll()
             .whenCompleteAsync((res, err) -> {
-                try {
-                    socket.close();
-                }
-                catch(IOException e) {
-                    System.err.println("Error while closing Websocket: " + e.getMessage());
-                }
+                socket.close();
             });
     }
 
@@ -307,7 +294,7 @@ public class PubSubHandle {
      * @param messageHandler The {@link PubSubMessageHandler} that should be registered.
      */
     public void onMessage(PubSubMessageHandler messageHandler) {
-        socket.addMessageHandler(messageHandler);
+        socket.setMessageHandler(messageHandler);
     }
 
     /**
@@ -316,7 +303,7 @@ public class PubSubHandle {
      * @param reconnectHandler The {@link PubSubReconnectHandler} that should be registered.
      */
     public void onReconnect(PubSubReconnectHandler reconnectHandler) {
-        socket.addReconnectHandler(reconnectHandler);
+        socket.setReconnectHandler(reconnectHandler);
     }
 
     /**
@@ -325,7 +312,7 @@ public class PubSubHandle {
      * @param rawRecordHandler The {@link PubSubRawRecordHandler} that should be registered.
      */
     public void onRawRecord(PubSubRawRecordHandler rawRecordHandler) {
-        socket.addRawRecordHandler(rawRecordHandler);
+        socket.setRawRecordHandler(rawRecordHandler);
     }
 
     /**
@@ -334,7 +321,7 @@ public class PubSubHandle {
      * @param closeHandler The {@link PubSubCloseHandler} that should be registered.
      */
     public void onClose(PubSubCloseHandler closeHandler) {
-        socket.addCloseHandler(closeHandler);
+        socket.setCloseHandler(closeHandler);
     }
 
     /**
@@ -343,7 +330,7 @@ public class PubSubHandle {
      * @param errorHandler The {@link PubSubErrorHandler} that should be registered
      */
     public void onError(PubSubErrorHandler errorHandler) {
-        socket.addErrorHandler(errorHandler);
+        socket.setErrorHandler(errorHandler);
     }
 
     /**
@@ -352,6 +339,6 @@ public class PubSubHandle {
      * @param newSessionHandler The {@link PubSubNewSessionHandler} that should be registered
      */
     public void onNewSession(PubSubNewSessionHandler newSessionHandler) {
-        socket.addNewSessionHandler(newSessionHandler);
+        socket.setNewSessionHandler(newSessionHandler);
     }
 }

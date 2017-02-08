@@ -37,7 +37,7 @@ public class PubSubOptions {
     /**
      * Static instance of PubSubOptions that contains all default values.
      */
-    public static PubSubOptions DEFAULT_OPTIONS = new PubSubOptions();
+    public static final PubSubOptions DEFAULT_OPTIONS = new PubSubOptions();
 
     /**
      * Initializes this PubSubOptions with the given options, filling in null values with defaults.
@@ -48,7 +48,7 @@ public class PubSubOptions {
      * @param sessionUuid    UUID of session to restore, if requested (Default: null). 
      */
     public PubSubOptions(String url, Boolean autoReconnect, Long connectTimeout, UUID sessionUuid) {
-      this.url = (url == null) ? "ws://localhost:8888" : url;
+      this.url = (url == null) ? "wss://api.cogswell.io/pubsub" : url;
       this.autoReconnect = (autoReconnect == null) ? false : autoReconnect;
       this.connectTimeout = (connectTimeout == null) ? 30000 : connectTimeout;
       this.sessionUuid = sessionUuid;

@@ -2,7 +2,6 @@ package com.gambit.sdk.pubsub;
 
 import javax.websocket.*;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -20,10 +19,11 @@ import java.io.IOException;
 import java.net.URI;
 
 import org.json.JSONObject;
-import org.json.JSONException;
 
 import com.gambit.sdk.pubsub.exceptions.*;
 import com.gambit.sdk.pubsub.handlers.*;
+
+import com.gambit.sdk.pubsub.utils.PubSubUtils;
 
 /**
  * Wraps the logic of Java websockets by extending {@link javax.websocket.Endpoint} and implementing 
@@ -74,9 +74,9 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     private static final long MAX_RECONNECT_DELAY = 120000L; // 2 minutes
 
     /**
-     * The {@link PubSubSocketConfigurator} used when creating this PubSubSocket.
+     * The project keys that were used to create this PubSubSocket
      */
-    private PubSubSocketConfigurator configurator;
+    private List<String> projectKeys;
 
     /**
      * The {@link PubSubOptions} used when creating this PubSubSocket.
@@ -91,7 +91,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     /**
      * The {@link Session} that represents this PubSubSocket as a websocket Endpoint connection.
      */
-    private Session session;
+    private Session websocketSession;
 
     /**
      * Tracks whether this socket is actually connected to the Pub/Sub server
@@ -197,7 +197,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     public PubSubSocket(List<String> projectKeys, PubSubOptions options)
         throws DeploymentException, IOException, PubSubException
     {
-        this.configurator = new PubSubSocketConfigurator(projectKeys);
+        this.projectKeys = projectKeys;
         this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
         this.outstanding = Collections.synchronizedMap(new Hashtable<>());
 
@@ -209,15 +209,13 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
     /**
      * Closes the connection represented by this PubSubSocket
-     * @throws IOException
      */
-    public void close() 
-        throws IOException 
+    public void close()
     {
         autoReconnect.set(false);
 
         try {
-            session.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Initiated a Standard Close"));
+            websocketSession.close(new CloseReason(CloseReason.CloseCodes.NORMAL_CLOSURE, "Initiated a Standard Close"));
         }
         catch(IOException e) {
             closeException = e;
@@ -230,7 +228,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * number of the message.
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
-     * @return CompletableFuture&lt;JSONObject&gt; future that will contain server response to given request
+     * @return {@code CompletableFuture<JSONObject>} future that will contain server response to given request
      */
     protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
@@ -243,6 +241,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
 
                 result.completeExceptionally(new Exception("Could not send JSON Object: " + json.toString()));
+                outstanding.remove(sequence);
             }
         });
 
@@ -280,7 +279,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
      * @param handler The callback to initiate when sending is completed.
-     * @return CompletableFuture&lt;JSONObject&gt; future which will complete when ???
+     * @return {@code CompletableFuture<JSONObject>} future which will complete when ???
      */
     protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
@@ -313,13 +312,14 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         //                   in java are blocking once get() is called on them.
 
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys);
             ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
             if(container != null) {
                 try {
-                    session = container.connectToServer(this, config, URI.create(options.getUrl()));
-                    server = session.getAsyncRemote();
+                    websocketSession = container.connectToServer(this, config, URI.create(options.getUrl()));
+                    server = websocketSession.getAsyncRemote();
                 }
                 catch(Exception e) {
                     throw new CompletionException(e);
@@ -330,7 +330,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 throw new CompletionException(e);
             }
 
-            if(session == null) {
+            if(websocketSession == null) {
                 PubSubException e = new PubSubException("Could not instantiate connection to server.");
                 throw new CompletionException(e);
             }
@@ -358,33 +358,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
                 throw new CompletionException(error);
             });
-    }
-
-    /**
-     * Simple method to spin up new thread that calls provided Runnable no sooner than the given delay in ms.
-     * @param runnable The runnable that will be called after the given delay
-     * @param delay The time in milliseconds to wait before calling the given runnable
-     * @throws InterruptedException
-     */
-    private void setTimeout(Runnable runnable, long delay)
-        throws InterruptedException
-    {
-        try {
-            new Thread(() -> {
-                try {
-                    Thread.sleep(delay);
-                    runnable.run();
-                }
-                catch(InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }).start();
-        }
-        catch(RuntimeException e) {
-            if(e.getCause() instanceof InterruptedException) {
-                throw e;
-            }
-        }
     }
 
     ///////////////////// EXTENDING ENDPOINT AND IMPLEMENTING MESSAGE_HANDLER ///////////////////// 
@@ -466,7 +439,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
                 catch(Exception e) {
                     try {
-                        setTimeout(this::reconnect, autoReconnectDelay.get());
+                        PubSubUtils.setTimeout(this::reconnect, autoReconnectDelay.get());
                     }
                     catch(Exception ex) {
                         // TODO: Log the exception and continue reconnect with the next delay
@@ -530,10 +503,12 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         else if(json.getInt("code") != 200) {
             long seq = json.getLong("seq");
             outstanding.get(seq).completeExceptionally(new PubSubException());
+            outstanding.remove(seq);
         }
         else {
             long seq = json.getLong("seq");
             outstanding.get(seq).complete(json);
+            outstanding.remove(seq);
         }
     }
 
@@ -543,7 +518,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Registers a handler to call whenever a new session is generated by the server
      * @param handler The handler to call
      */
-    public void addNewSessionHandler(PubSubNewSessionHandler handler) {
+    public void setNewSessionHandler(PubSubNewSessionHandler handler) {
         newSessionHandler = handler;
     }
 
@@ -551,7 +526,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Registers a handler that will be called any time the underlying socket must be reconnected
      * @param handler The handler to register for the reconnects
      */
-    public void addReconnectHandler(PubSubReconnectHandler handler) {
+    public void setReconnectHandler(PubSubReconnectHandler handler) {
         reconnectHandler = handler;
     }
 
@@ -559,7 +534,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Register a handler to call whenever a raw record (string json) is received from the server.
      * @param handler The handler to register 
      */
-    public void addRawRecordHandler(PubSubRawRecordHandler handler) {
+    public void setRawRecordHandler(PubSubRawRecordHandler handler) {
         rawRecordHandler = handler;
     }
 
@@ -567,7 +542,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Registers a handler to call if there are failures working with the underlying socket
      * @param handler The handler to register
      */
-    public void addErrorHandler(PubSubErrorHandler handler) {
+    public void setErrorHandler(PubSubErrorHandler handler) {
         errorHandler = handler;
     }
 
@@ -575,7 +550,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Register a handler to call whenever the underlying socket is actually closed.
      * @param handler The handler to register
      */
-    public void addCloseHandler(PubSubCloseHandler handler) {
+    public void setCloseHandler(PubSubCloseHandler handler) {
         closeHandler = handler;
     }
 
@@ -583,7 +558,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Registers a general handler that receives and handles message from all channels.
      * @param handler The handler to be registered 
      */
-    public void addMessageHandler(PubSubMessageHandler handler) {
+    public void setMessageHandler(PubSubMessageHandler handler) {
         generalMsgHandler = handler;
     }
 
