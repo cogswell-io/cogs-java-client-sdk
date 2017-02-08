@@ -3,8 +3,8 @@
 ## Import into Project
 
 The Java Cogswell Pub/Sub SDK is part of the Cogswell Java SDK and can be
-imported into a project either using the .jar files provided, or by using
-by including the appropriate information in your build file.
+imported into a project either using the .jar files provided, or by including
+the appropriate information in your build file.
 
 ### Using IntelliJ
 
