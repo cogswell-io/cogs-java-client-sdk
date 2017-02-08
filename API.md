@@ -305,6 +305,9 @@ public class CogswellPubSub {
         // Prepare the keys request for connecting with Cogswell Pub/Sub
         List<String> projectKeys = buildPermissionKeys();
 
+        // Choose the specific options desired for this connection
+        PubSubOptions options = new PubSubOptions("wss://api.cogswell.io/pubsub, false, null, null");
+
         // Access the Pub/Sub SDK
         PubSubSDK sdk = PubSubSDK.getInstance();
 
@@ -314,7 +317,7 @@ public class CogswellPubSub {
         String message = "It's being called the movie of the century!";
 
         // Connect to Cogswell Pub/Sub with default options
-        sdk.connect(projectKeys)
+        sdk.connect(projectKeys, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
 
