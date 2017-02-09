@@ -33,6 +33,10 @@ public class PubSubHandle {
         this.socket = socket;
     }
 
+    protected void dropConnection() {
+        socket.dropConnection();
+    }
+
     /**
      * Fetches UUID of current session, which enables caching if caching is enabled on the project. 
      * @return {@code CompletableFuture<UUID>} Completes with UUID of current session on success.   

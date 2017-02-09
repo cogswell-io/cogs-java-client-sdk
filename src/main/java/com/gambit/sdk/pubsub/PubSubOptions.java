@@ -49,7 +49,7 @@ public class PubSubOptions {
      */
     public PubSubOptions(String url, Boolean autoReconnect, Long connectTimeout, UUID sessionUuid) {
       this.url = (url == null) ? "wss://api.cogswell.io/pubsub" : url;
-      this.autoReconnect = (autoReconnect == null) ? false : autoReconnect;
+      this.autoReconnect = (autoReconnect == null) ? true : autoReconnect;
       this.connectTimeout = (connectTimeout == null) ? 30000 : connectTimeout;
       this.sessionUuid = sessionUuid;
     }

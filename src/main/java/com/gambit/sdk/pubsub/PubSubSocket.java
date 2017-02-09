@@ -46,7 +46,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             PubSubSocket socket = new PubSubSocket(projectKeys, options);
 
             socket.connect()
-                .thenAcceptAsync((invalid) -> {
+                .thenAcceptAsync((voidReturn) -> {
                     future.complete(socket);
                 })
                 .exceptionally((error) -> {
@@ -302,6 +302,18 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     }
 
     /**
+     * This method (used for testing purposes only) simulates dropping the underlying connection and reconnects immediately. 
+     */
+    protected void dropConnection() {
+        try {
+            websocketSession.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Dropped Connection"));
+        }
+        catch(IOException e) {
+            closeException = e;
+        }
+    }
+
+    /**
      * Initiates the connection the the Pub/Sub server with the configuration for this PubSubSocket
      * @throws DeploymentException
      * @throws IOException
@@ -342,22 +354,36 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     /**
      * Attempts to reconnects a socket that has been dropped for any reason other than intentionally and cleanly disconnecting
      * @return CompletableFuture<Void> future that completes successfully when connected, with an error otherwise
-     * @throws CompletionException Contains the cause of being unable to reconnect, if such occurs
      */
     private CompletableFuture<Void> reconnect() {
         return connect()
-            .thenAcceptAsync((invalid) -> {
+            .whenComplete((pubsubsocket, error) -> {
                 if(reconnectHandler != null) {
                     reconnectHandler.onReconnect();
                 }
-            })
-            .exceptionally((error) -> {
-                if(errorHandler != null) {
-                    errorHandler.onError(error, null, null);
-                }
-
-                throw new CompletionException(error);
             });
+    }
+
+    /**
+     * Continuously attempts to reconnect to a socket after given time in milliseconds if the socket was not closed cleanly.
+     * This method uses a backoff scheme whereby the time between the reconnect attempts increases up to MAX_RECONNECT_DELAY. 
+     * @param msUntilNextRetry initial amount of time to wait before first reconnect attempt
+     */
+    private void reconnectRetry(final long msUntilNextRetry) {
+        PubSubUtils.setTimeout(() -> {
+            reconnect()
+                .whenComplete((socket, error) -> { 
+                    /* We Reconnected, We're done */ 
+                })
+                .exceptionally((error) -> {
+                    long minimumDelay = Math.max(DEFAULT_RECONNECT_DELAY, msUntilNextRetry);
+                    long nextDelay = Math.min(minimumDelay * 2, MAX_RECONNECT_DELAY);
+
+                    reconnectRetry(nextDelay);
+                    return null;
+                });
+
+        }, msUntilNextRetry);
     }
 
     ///////////////////// EXTENDING ENDPOINT AND IMPLEMENTING MESSAGE_HANDLER ///////////////////// 
@@ -433,24 +459,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         }
 
         if(options.getAutoReconnect() == true) {
-            do {
-                try {
-                    reconnect();
-                }
-                catch(Exception e) {
-                    try {
-                        PubSubUtils.setTimeout(this::reconnect, autoReconnectDelay.get());
-                    }
-                    catch(Exception ex) {
-                        // TODO: Log the exception and continue reconnect with the next delay
-                    }
-
-                    previousDelay = autoReconnectDelay.get();
-                    minimumDelay = Math.max(DEFAULT_RECONNECT_DELAY, previousDelay);
-                    nextDelay = Math.min(minimumDelay, MAX_RECONNECT_DELAY) * 2;
-                    autoReconnectDelay.set(nextDelay);
-                }
-            } while(isConnected.get() != true && autoReconnectDelay.get() < MAX_RECONNECT_DELAY);
+            reconnectRetry(0);
         }
     }
 

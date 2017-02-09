@@ -11,7 +11,6 @@ public class PubSubUtils {
      * @throws InterruptedException
      */
     public static void setTimeout(Runnable runnable, long delay)
-            throws InterruptedException
     {
         new Thread(() -> {
             try {
@@ -19,6 +18,7 @@ public class PubSubUtils {
                 runnable.run();
             }
             catch(InterruptedException e) {
+                // TODO: Log the Interruption
                 throw new RuntimeException(e);
             }
         }).start();

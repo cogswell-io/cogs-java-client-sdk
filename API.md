@@ -19,6 +19,7 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenLocal()
+    jcenter()
 }
 
 dependencies {
