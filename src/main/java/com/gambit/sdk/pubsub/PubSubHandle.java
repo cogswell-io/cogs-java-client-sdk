@@ -33,8 +33,12 @@ public class PubSubHandle {
         this.socket = socket;
     }
 
-    protected void dropConnection() {
-        socket.dropConnection();
+    /**
+     * This method (used for test purposes only) allows the handle to drop a socket connection without cleanly closing it.
+     * @param msDelay Delay that will be used if the underlying connection attempts to autoReconnect
+     */
+    protected void dropConnection(long msDelay) {
+        socket.dropConnection(msDelay);
     }
 
     /**

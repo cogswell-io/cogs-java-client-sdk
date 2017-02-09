@@ -24,9 +24,9 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
      *
      * @param projectKeys Project keys used to construct the payload for authentication
      */
-    protected PubSubSocketConfigurator(List<String> projectKeys) {
+    protected PubSubSocketConfigurator(List<String> projectKeys, UUID session) {
         try {
-            PubSubAuth auth = new PubSubAuth(projectKeys);
+            PubSubAuth auth = new PubSubAuth(projectKeys, session);
             payload = auth.getPayload();
             payloadHmac = auth.getHmac();
         }

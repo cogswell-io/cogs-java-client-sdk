@@ -2,6 +2,7 @@ package com.gambit.sdk.pubsub;
 
 import javax.websocket.*;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -15,6 +16,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import java.io.IOException;
+
+import java.nio.ByteBuffer;
 
 import java.net.URI;
 
@@ -74,6 +77,11 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     private static final long MAX_RECONNECT_DELAY = 120000L; // 2 minutes
 
     /**
+     * 
+     */
+    private static final ByteBuffer pingData = ByteBuffer.allocate(0);
+
+    /**
      * The project keys that were used to create this PubSubSocket
      */
     private List<String> projectKeys;
@@ -88,10 +96,22 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     private RemoteEndpoint.Async server;
 
+    private AtomicReference<RemoteEndpoint.Async> atomicServer;
+
     /**
      * The {@link Session} that represents this PubSubSocket as a websocket Endpoint connection.
      */
     private Session websocketSession;
+
+    /**
+     * The ping interval for which after every interval the socket should ping the server 
+     */
+    private AtomicLong pingInterval;
+
+    /**
+     * True when the socket should ping the server every interval given in pingInterval
+     */
+    private AtomicBoolean doPings;
 
     /**
      * Tracks whether this socket is actually connected to the Pub/Sub server
@@ -111,7 +131,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     /**
      * Holds the current session uuid from the Pub/Sub server
      */
-    private UUID sessionUuid;
+    private AtomicReference<UUID> sessionUuid;
 
     /**
      * Holds whether the most recent session UUID meant that a new session was generated
@@ -168,11 +188,15 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Creates a minimal PubSubSocket, used for testing purposes
      */
     protected PubSubSocket() {
-        this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
         this.outstanding = Collections.synchronizedMap(new Hashtable<>());
+        this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
+
         this.autoReconnectDelay = new AtomicLong(DEFAULT_RECONNECT_DELAY);
         this.autoReconnect = new AtomicBoolean(false);
         this.isConnected = new AtomicBoolean(false);
+
+        this.doPings = new AtomicBoolean(false);
+        this.pingInterval = new AtomicLong(15);
 
         this.options = PubSubOptions.DEFAULT_OPTIONS;
     }
@@ -198,13 +222,18 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         throws DeploymentException, IOException, PubSubException
     {
         this.projectKeys = projectKeys;
-        this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
+        this.options = options;
+
         this.outstanding = Collections.synchronizedMap(new Hashtable<>());
+        this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
 
         this.autoReconnectDelay = new AtomicLong(options.getConnectTimeout());
         this.autoReconnect = new AtomicBoolean(options.getAutoReconnect());
         this.isConnected = new AtomicBoolean(false);
-        this.options = options;
+        this.sessionUuid = new AtomicReference<>(options.getSessionUuid());
+
+        this.doPings = new AtomicBoolean(false);
+        this.pingInterval = new AtomicLong(15);
     }
 
     /**
@@ -302,10 +331,12 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     }
 
     /**
-     * This method (used for testing purposes only) simulates dropping the underlying connection and reconnects immediately. 
+     * This method (used for testing purposes only) drops  underlying connection and reconnects with delay of msDelay milliseconds. 
+     * @param msDelay Delay in milliseconds to wait before attempting a reconnect
      */
-    protected void dropConnection() {
+    protected void dropConnection(long msDelay) {
         try {
+            autoReconnectDelay.set(msDelay);
             websocketSession.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Dropped Connection"));
         }
         catch(IOException e) {
@@ -324,7 +355,11 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         //                   in java are blocking once get() is called on them.
 
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys);
+            if(sessionUuid.get() != null) {
+                System.out.println("Attempting to connect with session: " + sessionUuid.get().toString());
+            }
+            
+            PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys, sessionUuid.get());
             ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
@@ -386,6 +421,29 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         }, msUntilNextRetry);
     }
 
+    /**
+     * Continuously pings the remote server with interval {@code msBetweenPings} between pings.
+     * @param msBetweenPings Interval to wait between sending two pings to remote server 
+     */
+    private void pingRemoteRepeat(final long msBetweenPings) {
+        new Thread(() -> {
+            while(doPings.get()) {
+                try {
+                    if(server != null && isConnected.get()) {
+                        server.sendPing(pingData);
+                    }
+                    Thread.sleep(msBetweenPings);
+                }
+                catch(IOException e) {
+                    // The ping could not even be sent
+                }
+                catch(InterruptedException e) {
+                    // Log the interruptions
+                }
+            }
+        }).start();
+    }
+
     ///////////////////// EXTENDING ENDPOINT AND IMPLEMENTING MESSAGE_HANDLER ///////////////////// 
 
     /**
@@ -397,6 +455,10 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     public void onOpen(Session session, EndpointConfig config) {
         isConnected.set(true);
         session.addMessageHandler(this);
+
+        doPings.set(true);
+        pingRemoteRepeat(pingInterval.get());
+        
         autoReconnectDelay.set(DEFAULT_RECONNECT_DELAY);
 
         if(autoReconnect.get()) {
@@ -405,33 +467,28 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 .put("action", "session-uuid");
 
             sendRequest(request.getInt("seq"), request)
-                .thenAcceptAsync((response) -> {
-                    if(response.getInt("code") != 200) {
-                        throw new CompletionException(new PubSubException("Could not get session"));
-                    }
-                    else {
-                        boolean newSession = false;
+                .thenAccept((response) -> {
+                    System.out.println("OPEN");
 
-                        if(sessionUuid == null) {
-                            sessionUuid = UUID.fromString(response.getString("uuid"));
-                            newSession = true;
-                        }
-                        else {
-                            String previousUuid = sessionUuid.toString();
-                            String newUuid = response.getString("uuid");
+                    if(response.getInt("code") == 200) {
+                        String uuid = response.getString("uuid");
 
-                            if(!previousUuid.equals(newUuid)) {
-                                newSession = true;
+                        if(sessionUuid.get() == null || !sessionUuid.get().toString().equals(uuid)) {
+                            sessionUuid.set(UUID.fromString(uuid));
+                            System.out.println("The session was set: " + sessionUuid.get().toString());
+
+                            if(newSessionHandler != null) {
+                                newSessionHandler.onNewSession(UUID.fromString(uuid));
                             }
                         }
-
-                        if(newSession && newSessionHandler != null) {
-                            isNewSession.set(true);
-                            newSessionHandler.onNewSession(sessionUuid);
-                        }
+                    }
+                    else {
+                        throw new CompletionException(new PubSubException("Could not get session."));
                     }
                 })
                 .exceptionally((error) -> {
+                    System.out.println("OPEN");
+
                     if(errorHandler != null) {
                         errorHandler.onError(error, null, null);
                     }
@@ -448,10 +505,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     @Override
     public void onClose(Session session, CloseReason closeReason) {
-        long previousDelay;
-        long minimumDelay;
-        long nextDelay;
-
+        server = null;
+        doPings.set(false);
         isConnected.set(false);
 
         if(closeHandler != null) {
@@ -459,7 +514,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         }
 
         if(options.getAutoReconnect() == true) {
-            reconnectRetry(0);
+            reconnectRetry(autoReconnectDelay.get());
         }
     }
 
@@ -483,6 +538,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     @Override
     public void onMessage(String message) {
+        System.out.println("Message from Server: " + message);
+
         if(rawRecordHandler != null) {
             rawRecordHandler.onRawRecord(message);
         }
