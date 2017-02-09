@@ -1,48 +1,5 @@
 # Cogswell Pub/Sub SDK
 
-## Import into Project
-
-The Java Cogswell Pub/Sub SDK is part of the Cogswell Java SDK and can be
-imported into a project either using the .jar files provided, or by including
-the appropriate information in your build file.
-
-### Using IntelliJ
-
-Follow the instructions under Compile and Install the Source and include the
-following information in your `build.gradle` file. Make sure to choose `Use
-default gradle wrapper (recommended)` when creating your Gradle project.
-
-```gradle
-apply plugin: 'java'
-
-sourceCompatibility = 1.8
-
-repositories {
-    mavenLocal()
-    jcenter()
-}
-
-dependencies {
-    compile group: 'io.cogswell', name: 'cogs-java-client-sdk', version: '1.1.0'
-}
-```
-
-## Compile and Install the Source
-
-Run the following command under the `cogs-java-client-sdk` directory.
-
-### On Linux:
-
-```bash
-./gradlew install
-```
-
-### On Windows:
-
-```batch
-gradlew.bat install
-```
-
 ## Code Examples
 
 The code examples that follow illustrate the individual methods of the Java
@@ -71,9 +28,29 @@ PubSubSDK sdk = PubSubSDK.getInstance();
 
 #### `connect()`
 
+In order to use default options, the following is possible:
+
 ```java
-// See Javadoc for information on PubSubOptions
-PubSubOptions options = new PubSubOptions();
+List<String> permissionKeys;
+permissionKeys.add("R-*-*");
+permissionKeys.add("W-*-*");
+permissionKeys.add("A-*-*");
+
+sdk.connect(permissionKeys)
+   .thenAcceptAsync(handle -> {
+      // Use "handle"
+   })
+   .exceptionally(error -> {
+      System.out.println("There was an error: " + error.getMessage());
+      return null;
+   });
+```
+
+If you want to specify your own options (such as choosing NOT to reconnect):
+
+```java
+// Use defaults, except for choosing NOT to reconnect on disconnect
+PubSubOptions options = new PubSubOptions(null, false, null, null)
 
 List<String> permissionKeys;
 permissionKeys.add("R-*-*");
