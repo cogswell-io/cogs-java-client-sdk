@@ -106,7 +106,7 @@ public class PubSubAuth
             .put("security_timestamp", timestamp);
 
         if(session != null) {
-            payload.put("uuid", session.toString());
+            payload.put("session_uuid", session.toString());
         }
 
         byte[] utf8Payload = payload.toString().getBytes("UTF-8");

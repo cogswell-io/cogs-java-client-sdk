@@ -59,7 +59,7 @@ public class PubSubSDK {
 
         PubSubSocket.connectSocket(projectKeys, options)
             .thenAcceptAsync((socket) -> {
-                future.complete(new PubSubHandle(socket));
+                future.complete(new PubSubHandle(socket, 0L));
             })
             .exceptionally((error) -> {
                 future.completeExceptionally(error);

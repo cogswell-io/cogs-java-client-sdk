@@ -23,6 +23,7 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
      * Creates the {@link PubSubSocketConfigurator} given the list project keys for authentication
      *
      * @param projectKeys Project keys used to construct the payload for authentication
+     * @param session Session UUID to connect and authenticate with, null if new session requested 
      */
     protected PubSubSocketConfigurator(List<String> projectKeys, UUID session) {
         try {
@@ -31,7 +32,6 @@ public class PubSubSocketConfigurator extends ClientEndpointConfig.Configurator
             payloadHmac = auth.getHmac();
         }
         catch(Exception e) {
-            System.out.println(":: COULD NOT CONVERT THINGS: " + e.getMessage());
             e.printStackTrace();
         } 
     }

@@ -131,7 +131,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     /**
      * Holds the current session uuid from the Pub/Sub server
      */
-    private AtomicReference<UUID> sessionUuid;
+    private UUID sessionUuid;
 
     /**
      * Holds whether the most recent session UUID meant that a new session was generated
@@ -230,7 +230,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         this.autoReconnectDelay = new AtomicLong(options.getConnectTimeout());
         this.autoReconnect = new AtomicBoolean(options.getAutoReconnect());
         this.isConnected = new AtomicBoolean(false);
-        this.sessionUuid = new AtomicReference<>(options.getSessionUuid());
 
         this.doPings = new AtomicBoolean(false);
         this.pingInterval = new AtomicLong(15);
@@ -262,7 +261,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
         CompletableFuture<JSONObject> result = new CompletableFuture<>();
         outstanding.put(sequence, result);
-        
+
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {
@@ -355,18 +354,14 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         //                   in java are blocking once get() is called on them.
 
         CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            if(sessionUuid.get() != null) {
-                System.out.println("Attempting to connect with session: " + sessionUuid.get().toString());
-            }
-            
-            PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys, sessionUuid.get());
+            PubSubSocketConfigurator configurator = new PubSubSocketConfigurator(projectKeys, sessionUuid);
             ClientEndpointConfig config = ClientEndpointConfig.Builder.create().configurator(configurator).build();
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
             if(container != null) {
                 try {
                     websocketSession = container.connectToServer(this, config, URI.create(options.getUrl()));
-                    server = websocketSession.getAsyncRemote();
+                    //server = websocketSession.getAsyncRemote();
                 }
                 catch(Exception e) {
                     throw new CompletionException(e);
@@ -447,14 +442,16 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     ///////////////////// EXTENDING ENDPOINT AND IMPLEMENTING MESSAGE_HANDLER ///////////////////// 
 
     /**
-     * Called immediately after establishing the connection represented by this PubSubSocket
+     * Called immediately after connection is established, but before server is created
      * @param session The session that has just been activated by this PubSubSocket
      * @param config The configuration used to establish this PubSubSocket
      */
     @Override
     public void onOpen(Session session, EndpointConfig config) {
-        isConnected.set(true);
         session.addMessageHandler(this);
+        server = session.getAsyncRemote();
+
+        isConnected.set(true);
 
         doPings.set(true);
         pingRemoteRepeat(pingInterval.get());
@@ -462,37 +459,18 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         autoReconnectDelay.set(DEFAULT_RECONNECT_DELAY);
 
         if(autoReconnect.get()) {
-            JSONObject request = new JSONObject()
-                .put("seq", -1)
-                .put("action", "session-uuid");
+            (new PubSubHandle(this, -1L)).getSessionUuid()
+                .thenAccept((uuid) -> {
+                    if(sessionUuid == null || !sessionUuid.toString().equals(uuid.toString())) {
+                        sessionUuid = uuid;
 
-            sendRequest(request.getInt("seq"), request)
-                .thenAccept((response) -> {
-                    System.out.println("OPEN");
-
-                    if(response.getInt("code") == 200) {
-                        String uuid = response.getString("uuid");
-
-                        if(sessionUuid.get() == null || !sessionUuid.get().toString().equals(uuid)) {
-                            sessionUuid.set(UUID.fromString(uuid));
-                            System.out.println("The session was set: " + sessionUuid.get().toString());
-
-                            if(newSessionHandler != null) {
-                                newSessionHandler.onNewSession(UUID.fromString(uuid));
-                            }
+                        if(newSessionHandler != null) {
+                            newSessionHandler.onNewSession(sessionUuid);
                         }
-                    }
-                    else {
-                        throw new CompletionException(new PubSubException("Could not get session."));
                     }
                 })
                 .exceptionally((error) -> {
-                    System.out.println("OPEN");
-
-                    if(errorHandler != null) {
-                        errorHandler.onError(error, null, null);
-                    }
-
+                    isConnected.set(false);
                     return null;
                 });
         }
@@ -525,6 +503,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     @Override
     public void onError(Session session, Throwable throwable) {
+        throwable.printStackTrace();
         if(errorHandler != null) {
             errorHandler.onError(throwable, null, null);
         }
@@ -538,8 +517,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     @Override
     public void onMessage(String message) {
-        System.out.println("Message from Server: " + message);
-
         if(rawRecordHandler != null) {
             rawRecordHandler.onRawRecord(message);
         }

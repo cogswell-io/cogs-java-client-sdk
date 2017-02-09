@@ -1,5 +1,6 @@
 package com.gambit.sdk.pubsub;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -19,6 +20,7 @@ import com.gambit.sdk.pubsub.handlers.PubSubMessageHandler;
 import org.json.JSONObject;
 
 import static org.junit.Assert.*;
+import org.junit.Before;
 import org.junit.Test;
 
 public class PubSubIntegrationTests {
@@ -62,6 +64,14 @@ public class PubSubIntegrationTests {
     private static PubSubHandle secondHandle;
     private static String errorMessage;
     private static boolean isError;
+
+    @Before
+    public void setupBeforeEach() {
+        pubsubHandle = null;
+        secondHandle = null;
+        errorMessage = "";
+        isError = false;
+    }
 
     @Test
     public void testSubscribeAndUnsubscribe() {
@@ -572,7 +582,7 @@ public class PubSubIntegrationTests {
 
     @Test
     public void testReconnectOnConnectionDrop() {
-                try {
+        try {
             PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
@@ -581,7 +591,6 @@ public class PubSubIntegrationTests {
 
             AtomicBoolean wasCalled = new AtomicBoolean(false);
             CountDownLatch signal = new CountDownLatch(1);
-
 
             pubsubSDK.connect(permissions, options)
                 .thenAcceptAsync((handle) -> {
@@ -592,7 +601,7 @@ public class PubSubIntegrationTests {
                         signal.countDown();
                     });
 
-                    pubsubHandle.dropConnection();
+                    pubsubHandle.dropConnection(0);
                 })
                 .exceptionally((error) -> {
                     isError = true;
@@ -621,5 +630,88 @@ public class PubSubIntegrationTests {
             fail("There was an exception thrown: " + ex.getMessage());
             ex.printStackTrace();
         }
+    }
+
+    @Test
+    public void testSameSessionAfterDroppedConnection() {
+        try {
+            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            JSONObject keys = getMainKeys();
+
+            List<String> permissions = buildPermissionKeys(keys);
+
+            AtomicReference<String> uuidRef = new AtomicReference<>();
+            AtomicInteger timesCalled = new AtomicInteger(0);
+            CountDownLatch signal = new CountDownLatch(1);
+
+            pubsubSDK.connect(permissions, options)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    pubsubHandle.onReconnect(() -> {
+                        pubsubHandle.getSessionUuid()
+                            .thenAcceptAsync((uuid) -> {
+                                try {
+                                    assertEquals(
+                                        "The reconnected session and the one received previously should match.",
+                                        uuidRef.get().toString(),
+                                        uuid.toString()
+                                    );
+                                }
+                                catch(AssertionError e) {
+                                    isError = true;
+                                    errorMessage = e.getMessage();
+                                }
+
+                                signal.countDown();
+                            })
+                            .exceptionally((error) -> {
+                                isError = true;
+                                errorMessage = error.getMessage();
+                                signal.countDown();
+                                return null;
+                            });
+                    });
+
+                    pubsubHandle.onNewSession((uuid) -> {
+                        timesCalled.getAndIncrement();
+                    });
+
+                    return pubsubHandle.getSessionUuid();
+                })
+                .thenAcceptAsync((uuid) -> {
+                    uuidRef.set(uuid.toString());
+
+                    pubsubHandle.dropConnection(0);
+                })
+                .exceptionally((error) -> {
+                    isError = true;
+                    errorMessage = error.getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                signal.await(5, TimeUnit.SECONDS);
+
+                assertTrue(
+                    "The new session handler should not have been called.",
+                    timesCalled.get() == 1L
+                );
+
+                if(isError) {
+                    fail("An error occurred: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+
     }
 }

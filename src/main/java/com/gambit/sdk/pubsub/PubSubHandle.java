@@ -26,10 +26,20 @@ public class PubSubHandle {
     /**
      * Creates an endpoint to Cogswell Pub/Sub using the given {@link PubSubSocket} as the underlying connection.
      *
-     * @param socket {@link PubSubSocket} which contains the underlying connection to Cogswell Pub/Sub
+     * @param socket {@link PubSubSocket} which contains the underlying connection to Cogswell Pub/Sub 
      */
     protected PubSubHandle(PubSubSocket socket) {
-        this.sequence = new AtomicLong(0);
+        this(socket, 0L);
+    }
+
+    /**
+     * Creates an endpoint to Cogswell Pub/Sub using the given {@link PubSubSocket} as the underlying connection.
+     *
+     * @param socket {@link PubSubSocket} which contains the underlying connection to Cogswell Pub/Sub
+     * @param firstSequenceNumber Provides the initial sequence number for stating to count calls (defaults to 0L)
+     */
+    protected PubSubHandle(PubSubSocket socket, long firstSequenceNumber) {
+        this.sequence = new AtomicLong(firstSequenceNumber);
         this.socket = socket;
     }
 
