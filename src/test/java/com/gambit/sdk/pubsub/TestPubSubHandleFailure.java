@@ -9,6 +9,8 @@ import java.util.LinkedList;
 import java.util.UUID;
 import java.util.List;
 
+import com.gambit.sdk.pubsub.handlers.PubSubErrorHandler;
+
 import org.json.JSONObject;
 
 import static org.junit.Assert.*;
@@ -442,7 +444,7 @@ class TestPubSubSocketFailure extends PubSubSocket
         return outcome;
     }
 
-    protected void sendPublish(long sequence, JSONObject json, SendHandler handler) {
+    protected void sendPublish(long sequence, JSONObject json, PubSubErrorHandler pubSubErrorHandler, SendHandler handler) {
         Exception sendException = new Exception(ExceptionType.SEND.toString());
         handler.onResult(new SendResult(sendException));
     }

@@ -20,6 +20,7 @@ import java.util.UUID;
 import java.time.Instant;
 
 import com.gambit.sdk.pubsub.handlers.PubSubMessageHandler;
+import com.gambit.sdk.pubsub.handlers.PubSubErrorHandler;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -281,6 +282,8 @@ public class TestPubSubHandleSuccess {
                         record.getChannel()
                     );
 
+                    System.out.println("Assertions");
+
                     signal.countDown();
                 }
                 catch(AssertionError e) {
@@ -351,7 +354,7 @@ public class TestPubSubHandleSuccess {
                 }
             })
             .thenComposeAsync((subscriptions) -> {
-                return testHandle.publishWithAck(channel, message, null);
+                return testHandle.publishWithAck(channel, message);
             })
             .thenAcceptAsync((uuid) -> {
                 publishAck.append(uuid.toString());
@@ -516,7 +519,9 @@ class TestPubSubSocketSuccess extends PubSubSocket
         return outcome;
     }
 
-    protected void sendPublish(long sequence, JSONObject json, SendHandler handler) {
+    protected void sendPublish(long sequence, JSONObject json, PubSubErrorHandler pubSubErrorHandler, SendHandler handler) {
+        System.out.println("In the Test Socket...");
+        
         String channel = json.getString("chan");
         String msg = json.getString("msg");
 

@@ -480,7 +480,7 @@ public class PubSubIntegrationTests {
                     });
                 })
                 .thenComposeAsync((subs) -> {
-                    return pubsubHandle.publishWithAck(chan, message, null);
+                    return pubsubHandle.publishWithAck(chan, message);
                 })
                 .thenAcceptAsync((ack) -> {
                     uuidFromPublish.append(ack.toString());

@@ -118,7 +118,7 @@ public class PubSubHandle {
      * Unsubscribes from {@code channel} which stops receipt and handling of messages for {@code channel}.
      *
      * @param channel Name of the channel from which to unsubscribe.
-     * @return {@code CompletableFuture<List<String>>} Complets with list of all remaining subscriptions on success.
+     * @return {@code CompletableFuture<List<String>>} Completes with list of all remaining subscriptions on success.
      */
     public CompletableFuture<List<String>> unsubscribe(String channel) {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
@@ -149,7 +149,7 @@ public class PubSubHandle {
     }
     
     /**
-     * Unsubscribes from all channels which stops receipt and handling of message from all channels.
+     * Unsubscribes from all channels. This stops receipt and handling of message from all channels.
      *
      * @return {@code CompletableFuture<List<String>>} Completes with list of channels that have been unsubscribed on success.
      */
@@ -183,7 +183,7 @@ public class PubSubHandle {
     /**
      * Fetches list of all current subscriptions.
      *
-     * @return {@code CompletableFuture<List<String>>} Complets with list of all current subscriptions on success.
+     * @return {@code CompletableFuture<List<String>>} Completes with list of all current subscriptions on success.
      */
     public CompletableFuture<List<String>> listSubscriptions() {
         CompletableFuture<List<String>> outcome = new CompletableFuture<>();
@@ -233,16 +233,12 @@ public class PubSubHandle {
             .put("msg", message)
             .put("ack", false);
 
-        socket.sendPublish(seq, publish, (result) -> {
+        socket.sendPublish(seq, publish, handler, (result) -> {
             if(result.isOK()) {
                 outcome.complete(seq);
             }
             else {
                 outcome.completeExceptionally(result.getException());
-
-                if(handler != null) {
-                    handler.onError(result.getException(), new Long(seq), channel);
-                }
             }
         });
 
@@ -254,10 +250,9 @@ public class PubSubHandle {
      *
      * @param channel Name of the channel on which to publish the message.
      * @param message Content of the message to be publish on the given channel.
-     * @param handler Error handler called if <em>sending</em> fails.
-     * @return {@code CompletableFuture<UUID>} Complets with UUID of published message on success. 
+     * @return {@code CompletableFuture<UUID>} Completes with UUID of published message on success. 
      */
-    public CompletableFuture<UUID> publishWithAck(String channel, String message, PubSubErrorHandler handler) {
+    public CompletableFuture<UUID> publishWithAck(String channel, String message) {
         CompletableFuture<UUID> outcome = new CompletableFuture<>();
         long seq = sequence.getAndIncrement();
 
@@ -271,10 +266,6 @@ public class PubSubHandle {
         socket.sendPublishWithAck(seq, publish, (sendResult) -> {
             if(!sendResult.isOK()) {
                 outcome.completeExceptionally(sendResult.getException());
-                
-                if(handler != null) {
-                    handler.onError(sendResult.getException(), new Long(seq), channel);
-                }
             }
         })
         .thenAcceptAsync((json) -> {
@@ -283,11 +274,6 @@ public class PubSubHandle {
         })
         .exceptionally((error) -> {
             outcome.completeExceptionally(error);
-            
-            if(handler != null) {
-                handler.onError(error, new Long(seq), channel);
-            }
-
             return null;
         });
 
@@ -297,7 +283,7 @@ public class PubSubHandle {
     /**
      * Closes the connection with Cogswell Pub/Sub and unsubscribes from all channels.
      *
-     * @return {@code CompletableFuture<List<String>>} Complets with list of channels unsubscribed on success.
+     * @return {@code CompletableFuture<List<String>>} Completes with list of channels unsubscribed on success.
      */
     public CompletableFuture<List<String>> close() {
         return unsubscribeAll()

@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import java.util.Collections;
 import java.util.Hashtable;
@@ -22,6 +23,10 @@ import java.nio.ByteBuffer;
 import java.net.URI;
 
 import org.json.JSONObject;
+import org.json.JSONException;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.Cache;
 
 import com.gambit.sdk.pubsub.exceptions.*;
 import com.gambit.sdk.pubsub.handlers.*;
@@ -142,7 +147,17 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Maps each outstanding request to the server by their sequence number 
      * with their associated {@link java.util.concurrent.CompletableFuture}
      */
-    private Map<Long, CompletableFuture<JSONObject>> outstanding;
+    private Cache<Long, CompletableFuture<JSONObject>> outstanding;
+
+    /**
+     * Maps outstanding publish request sequence numbers to their error handlers
+     */
+    private Cache<Long, PubSubErrorHandler> publishErrorHandlers;
+
+    /**
+     * Maps outstanding publish requests with the publish request objects
+     */
+    private Cache<Long, JSONObject> publishRequests;
 
     /**
      * Maps the channel subscriptions of this PubSubSocket with the specific message handlers given for those channels. 
@@ -188,7 +203,10 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Creates a minimal PubSubSocket, used for testing purposes
      */
     protected PubSubSocket() {
-        this.outstanding = Collections.synchronizedMap(new Hashtable<>());
+        this.outstanding = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
+        this.publishRequests = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
+        this.publishErrorHandlers = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
+
         this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
 
         this.autoReconnectDelay = new AtomicLong(DEFAULT_RECONNECT_DELAY);
@@ -224,7 +242,10 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         this.projectKeys = projectKeys;
         this.options = options;
 
-        this.outstanding = Collections.synchronizedMap(new Hashtable<>());
+        this.publishErrorHandlers = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
+        this.publishRequests = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
+        this.outstanding = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
+
         this.msgHandlers = Collections.synchronizedMap(new Hashtable<>());
 
         this.autoReconnectDelay = new AtomicLong(options.getConnectTimeout());
@@ -269,7 +290,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
 
                 result.completeExceptionally(new Exception("Could not send JSON Object: " + json.toString()));
-                outstanding.remove(sequence);
+                outstanding.invalidate(sequence);
             }
         });
 
@@ -284,7 +305,11 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param json The request to send to the Pub/Sub server
      * @param handler The callback to initiate when sending is completed.
      */
-    protected void sendPublish(long sequence, JSONObject json, SendHandler handler) {
+    protected void sendPublish(long sequence, JSONObject json, PubSubErrorHandler pubSubErrorHandler, SendHandler handler) {
+        if(pubSubErrorHandler != null) {
+            publishErrorHandlers.put(sequence, pubSubErrorHandler);
+        }
+
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {
@@ -540,18 +565,44 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             }
         }
         else if(!json.has("seq")) {
-            // This should never happen, how should we respond if it actually does?
-            throw new java.util.concurrent.CompletionException(new PubSubException());
+            // This should never happen, but if it does, propogate to error handle if provided.
+            if(errorHandler != null) {
+                errorHandler.onError(new PubSubException(json.toString()), null, null);
+            }
         }
         else if(json.getInt("code") != 200) {
             long seq = json.getLong("seq");
-            outstanding.get(seq).completeExceptionally(new PubSubException());
-            outstanding.remove(seq);
+            CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+
+            if(responseFuture != null) {
+                responseFuture.completeExceptionally(new PubSubException(json.toString()));
+            }
+
+            PubSubErrorHandler errorHandler = publishErrorHandlers.getIfPresent(seq);
+            if(errorHandler != null) {
+                String channel = null;
+
+                try {
+                    channel = json.getString("chan");
+                }
+                catch(JSONException e) {
+                    // No Channel name...
+                }
+
+                errorHandler.onError(new PubSubException(), seq, channel);
+            }
+
+            outstanding.invalidate(seq);
         }
         else {
             long seq = json.getLong("seq");
-            outstanding.get(seq).complete(json);
-            outstanding.remove(seq);
+            CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+
+            if(responseFuture != null) {
+                responseFuture.complete(json);
+            }
+            
+            outstanding.invalidate(seq);
         }
     }
 
