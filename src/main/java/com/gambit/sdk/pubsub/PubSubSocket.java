@@ -454,11 +454,10 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                     }
                     Thread.sleep(msBetweenPings);
                 }
-                catch(IOException e) {
-                    // The ping could not even be sent
-                }
-                catch(InterruptedException e) {
-                    // Log the interruptions
+                catch(Exception e) {
+                    if(errorHandler != null) {
+                        errorHandler.onError(e, null, null);
+                    }
                 }
             }
         }).start();
@@ -586,10 +585,10 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                     channel = json.getString("chan");
                 }
                 catch(JSONException e) {
-                    // No Channel name...
+                    errorHandler.onError(e, null, null);
                 }
 
-                errorHandler.onError(new PubSubException(), seq, channel);
+                errorHandler.onError(new PubSubException(json.toString()), seq, channel);
             }
 
             outstanding.invalidate(seq);
