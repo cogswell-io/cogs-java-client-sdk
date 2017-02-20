@@ -45,10 +45,10 @@ public class PubSubHandle {
 
     /**
      * This method (used for test purposes only) allows the handle to drop a socket connection without cleanly closing it.
-     * @param msDelay Delay that will be used if the underlying connection attempts to autoReconnect
+     * @param dropOptions Options used to modify or fine-tune the results of dropping the underlying connection
      */
-    protected void dropConnection(long msDelay) {
-        socket.dropConnection(msDelay);
+    protected void dropConnection(PubSubDropConnectionOptions dropOptions) {
+        socket.dropConnection(dropOptions);
     }
 
     /**
@@ -222,7 +222,7 @@ public class PubSubHandle {
      * @param handler Error handler called if <em>sending</em> fails.
      * @return {@code CompletableFuture<Long>} Completes with sequence number of record sent on a successful send. 
      */
-    public CompletableFuture<Long> publish(String channel, String message, PubSubErrorHandler handler) {
+    public CompletableFuture<Long> publish(String channel, String message, PubSubErrorResponseHandler handler) {
         CompletableFuture<Long> outcome = new CompletableFuture<>();
         long seq = sequence.getAndIncrement();
 
@@ -234,6 +234,39 @@ public class PubSubHandle {
             .put("ack", false);
 
         socket.sendPublish(seq, publish, handler, (result) -> {
+            if(result.isOK()) {
+                outcome.complete(seq);
+            }
+            else {
+                outcome.completeExceptionally(result.getException());
+            }
+        });
+
+        return outcome;
+    }
+
+    /**
+     * Publishes {@code message} to {@code channel} without acknowledgement that the message was actually published.
+     * Note: Completion of the returned CompletableFuture indicates success only in sending the message. 
+     *       This method gives no information and no guarantees that the message was actually published.
+     *
+     * @param channel Name of the channel on which to publish the message.
+     * @param message Content of the message to be publish on the given channel.
+     * @param handler Error handler called if <em>sending</em> fails.
+     * @return {@code CompletableFuture<Long>} Completes with sequence number of record sent on a successful send. 
+     */
+    public CompletableFuture<Long> publish(String channel, String message) {
+        CompletableFuture<Long> outcome = new CompletableFuture<>();
+        long seq = sequence.getAndIncrement();
+
+        JSONObject publish = new JSONObject()
+            .put("seq", seq)
+            .put("action", "pub")
+            .put("chan", channel)
+            .put("msg", message)
+            .put("ack", false);
+
+        socket.sendPublish(seq, publish, null, (result) -> {
             if(result.isOK()) {
                 outcome.complete(seq);
             }
@@ -329,12 +362,21 @@ public class PubSubHandle {
     }
 
     /**
-     * Registers a handler that is called whenever there is any error with the underlying connection to Cogswell Pub/Sub
+     * Registers a handler for whenever a client-side exception is thrown.
      *
      * @param errorHandler The {@link PubSubErrorHandler} that should be registered
      */
     public void onError(PubSubErrorHandler errorHandler) {
         socket.setErrorHandler(errorHandler);
+    }
+
+    /**
+     * Registers a handler for whenever an error response is received from ther server.
+     *
+     * @param errorHandler The {@link PubSubErrorHandler} that should be registered
+     */
+    public void onErrorResponse(PubSubErrorResponseHandler errorResponseHandler) {
+        socket.setErrorResponseHandler(errorResponseHandler);
     }
 
     /**

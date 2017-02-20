@@ -28,6 +28,8 @@ import org.json.JSONException;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.Cache;
 
+import com.gambit.sdk.pubsub.PubSubErrorResponse;
+
 import com.gambit.sdk.pubsub.exceptions.*;
 import com.gambit.sdk.pubsub.handlers.*;
 
@@ -101,8 +103,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     private RemoteEndpoint.Async server;
 
-    private AtomicReference<RemoteEndpoint.Async> atomicServer;
-
     /**
      * The {@link Session} that represents this PubSubSocket as a websocket Endpoint connection.
      */
@@ -152,7 +152,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     /**
      * Maps outstanding publish request sequence numbers to their error handlers
      */
-    private Cache<Long, PubSubErrorHandler> publishErrorHandlers;
+    private Cache<Long, PubSubErrorResponseHandler> publishErrorHandlers;
 
     /**
      * Maps outstanding publish requests with the publish request objects
@@ -183,6 +183,11 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Handler called as general message handler whenever published messages are received from server 
      */
     private PubSubMessageHandler generalMsgHandler;
+
+    /**
+     * General error handler for when error responses are received from the server.
+     */
+    private PubSubErrorResponseHandler errorResponseHandler;
 
     /**
      * Handler called whenever an error having to do with this connection is encountered
@@ -286,7 +291,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {
-                    errorHandler.onError(sendResult.getException(), new Long(sequence), json.getString("channel"));
+                    errorHandler.onError(sendResult.getException());
                 }
 
                 result.completeExceptionally(new Exception("Could not send JSON Object: " + json.toString()));
@@ -301,19 +306,21 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Sends the given request, represented by the {@link org.json.JSONObject}. Once the send completes
      * the callback {@link javax.websocket.SendHandler} is called. (Note: The callback is initiated for
      * sending the data only. It does NOT mean that anything was received for that send.)
+     *
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
+     * @param pubSubErrorHandler The handler that is called if some exception or error is thrown
      * @param handler The callback to initiate when sending is completed.
      */
-    protected void sendPublish(long sequence, JSONObject json, PubSubErrorHandler pubSubErrorHandler, SendHandler handler) {
-        if(pubSubErrorHandler != null) {
-            publishErrorHandlers.put(sequence, pubSubErrorHandler);
+    protected void sendPublish(long sequence, JSONObject json, PubSubErrorResponseHandler errorResponseHandler, SendHandler handler) {
+        if(errorResponseHandler != null) {
+            publishErrorHandlers.put(sequence, errorResponseHandler);
         }
 
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {
-                    errorHandler.onError(sendResult.getException(), sequence, json.getString("chan"));
+                    errorHandler.onError(sendResult.getException());
                 }
 
                 handler.onResult(sendResult);
@@ -341,7 +348,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         server.sendText(json.toString(), (sendResult) -> {
             if(!sendResult.isOK()) {
                 if(errorHandler != null) {
-                    errorHandler.onError(sendResult.getException(), sequence, json.getString("chan"));
+                    errorHandler.onError(sendResult.getException());
                 }
 
                 handler.onResult(sendResult);
@@ -358,9 +365,9 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * This method (used for testing purposes only) drops  underlying connection and reconnects with delay of msDelay milliseconds. 
      * @param msDelay Delay in milliseconds to wait before attempting a reconnect
      */
-    protected void dropConnection(long msDelay) {
+    protected void dropConnection(PubSubDropConnectionOptions dropOptions) {
         try {
-            autoReconnectDelay.set(msDelay);
+            autoReconnectDelay.set(dropOptions.getAutoReconnectDelay());
             websocketSession.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Dropped Connection"));
         }
         catch(IOException e) {
@@ -456,7 +463,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
                 catch(Exception e) {
                     if(errorHandler != null) {
-                        errorHandler.onError(e, null, null);
+                        errorHandler.onError(e);
                     }
                 }
             }
@@ -528,8 +535,9 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     @Override
     public void onError(Session session, Throwable throwable) {
         throwable.printStackTrace();
+
         if(errorHandler != null) {
-            errorHandler.onError(throwable, null, null);
+            errorHandler.onError(throwable);
         }
     }
 
@@ -566,7 +574,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         else if(!json.has("seq")) {
             // This should never happen, but if it does, propogate to error handle if provided.
             if(errorHandler != null) {
-                errorHandler.onError(new PubSubException(json.toString()), null, null);
+                errorHandler.onError(new PubSubException(json.toString()));
             }
         }
         else if(json.getInt("code") != 200) {
@@ -577,18 +585,28 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 responseFuture.completeExceptionally(new PubSubException(json.toString()));
             }
 
-            PubSubErrorHandler errorHandler = publishErrorHandlers.getIfPresent(seq);
-            if(errorHandler != null) {
-                String channel = null;
+            PubSubErrorResponseHandler publishErrorResponseHandler = publishErrorHandlers.getIfPresent(seq);
 
-                try {
-                    channel = json.getString("chan");
-                }
-                catch(JSONException e) {
-                    errorHandler.onError(e, null, null);
+            try {
+                String action = json.getString("action");
+                String details = json.getString("details");
+                String errorMessage = json.getString("message");
+                int code = json.getInt("code");
+
+                PubSubErrorResponse errorResponse = new PubSubErrorResponse(code, seq, action, details, errorMessage);
+
+                if(publishErrorResponseHandler != null) {
+                    publishErrorResponseHandler.onErrorResponse(errorResponse);
                 }
 
-                errorHandler.onError(new PubSubException(json.toString()), seq, channel);
+                if(errorResponseHandler != null) {
+                    errorResponseHandler.onErrorResponse(errorResponse);
+                }
+            }
+            catch(JSONException e) {
+                if(errorHandler != null) {
+                    errorHandler.onError(e);
+                }
             }
 
             outstanding.invalidate(seq);
@@ -633,10 +651,20 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
     /**
      * Registers a handler to call if there are failures working with the underlying socket
+     *
      * @param handler The handler to register
      */
     public void setErrorHandler(PubSubErrorHandler handler) {
         errorHandler = handler;
+    }
+
+    /**
+     * Registers a handler to call if error response are received from the server.
+     *
+     * @param handler The handler to register
+     */
+    public void setErrorResponseHandler(PubSubErrorResponseHandler handler) {
+        errorResponseHandler = handler;
     }
 
     /**

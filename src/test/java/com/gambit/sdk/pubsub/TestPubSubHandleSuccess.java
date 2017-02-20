@@ -19,8 +19,8 @@ import java.util.UUID;
 
 import java.time.Instant;
 
+import com.gambit.sdk.pubsub.handlers.PubSubErrorResponseHandler;
 import com.gambit.sdk.pubsub.handlers.PubSubMessageHandler;
-import com.gambit.sdk.pubsub.handlers.PubSubErrorHandler;
 
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -519,7 +519,7 @@ class TestPubSubSocketSuccess extends PubSubSocket
         return outcome;
     }
 
-    protected void sendPublish(long sequence, JSONObject json, PubSubErrorHandler pubSubErrorHandler, SendHandler handler) {
+    protected void sendPublish(long sequence, JSONObject json, PubSubErrorResponseHandler errorResponseHandler, SendHandler handler) {
         System.out.println("In the Test Socket...");
         
         String channel = json.getString("chan");
