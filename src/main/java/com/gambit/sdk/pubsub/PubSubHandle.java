@@ -318,11 +318,8 @@ public class PubSubHandle {
      *
      * @return {@code CompletableFuture<List<String>>} Completes with list of channels unsubscribed on success.
      */
-    public CompletableFuture<List<String>> close() {
-        return unsubscribeAll()
-            .whenCompleteAsync((res, err) -> {
-                socket.close();
-            });
+    public CompletableFuture<Void> close() {
+        return CompletableFuture.runAsync(socket::close);
     }
 
     /**
