@@ -34,7 +34,13 @@ public class PubSubIntegrationTestsConfig {
             String configString = new Scanner(configInputStream, "UTF-8").useDelimiter("\\A").next();
 
             JSONObject configJSON = new JSONObject(configString);
-            host = configJSON.getString("host");
+
+            if(configJSON.has("host")) {
+                host = configJSON.getString("host");
+            }
+            else {
+                host = "wss://api.cogswell.io/pubsub";
+            }
             
             JSONObject main = null; 
             JSONObject secondary = null;
