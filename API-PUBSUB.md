@@ -1,5 +1,32 @@
 # Cogswell Pub/Sub SDK
 
+## Running Integration Tests
+
+In order to run the Pub/Sub integration tests, some setup is required.
+A `config.json` file needs to be provided under the directory 
+`cogs-java-client-sdk/src/main/resources/com/gambit/sdk/pubsub`.
+The file should contain valid and enabled keys from a Cogswell Pub/Sub
+project.
+
+```json
+{
+    "mainKeys": {
+        "adminKey": "A-*-*",
+        "readKey": "R-*-*",
+        "writeKey": "W-*-*"
+    },
+
+    "secondaryKeys": {
+        "adminKey": "A-*-*",
+        "readKey": "R-*-*",
+        "writeKey": "W-*-*"
+    }
+}
+``` 
+
+In order to actually run the integration tests, run the command 
+`./gradlew cleanTest itest` from the `cogs-java-client-sdk` directory. 
+
 ## Code Examples
 
 The code examples that follow illustrate the individual methods of the Java
