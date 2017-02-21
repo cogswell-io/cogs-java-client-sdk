@@ -60,6 +60,8 @@ public class PubSubIntegrationTests {
         return permissions;
     }
 
+    private static String testServer = "*";
+
     private static PubSubHandle pubsubHandle;
     private static PubSubHandle secondHandle;
     private static String errorMessage;
@@ -76,7 +78,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testSubscribeAndUnsubscribe() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -152,7 +154,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testReceiveMessageForSubscription() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -221,7 +223,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testListingSubscriptions() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -296,7 +298,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testNoReceiveOnUnsubscribedChannel() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -380,7 +382,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testTwoHandlesReceiveSameMessage() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keysOne = getMainKeys();
             JSONObject keysTwo = getSecondaryKeys();
@@ -456,7 +458,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testPublishWithAck() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -521,7 +523,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testGetSession() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -583,7 +585,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testReconnectOnConnectionDrop() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
@@ -635,7 +637,7 @@ public class PubSubIntegrationTests {
     @Test
     public void testSameSessionAfterDroppedConnection() {
         try {
-            PubSubOptions options = new PubSubOptions("wss://gamqa-api.aviatainc.com/pubsub", null, null, null);
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
             JSONObject keys = getMainKeys();
 
