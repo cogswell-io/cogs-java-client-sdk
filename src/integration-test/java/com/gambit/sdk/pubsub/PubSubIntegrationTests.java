@@ -20,52 +20,28 @@ import com.gambit.sdk.pubsub.handlers.PubSubMessageHandler;
 import org.json.JSONObject;
 
 import static org.junit.Assert.*;
+import org.junit.BeforeClass;
 import org.junit.Before;
 import org.junit.Test;
 
 public class PubSubIntegrationTests {
 
-    private static JSONObject getMainKeys() {
-        JSONObject key = new JSONObject()
-            .put("identity", "*")
-            .put("read_key", "*")
-            .put("write_key", "*")
-            .put("admin_key", "*");
-
-        return key;
-    }
-
-    private static JSONObject getSecondaryKeys() {
-        JSONObject key = new JSONObject()
-            .put("identity", "*")
-            .put("read_key", "*")
-            .put("write_key", "*")
-            .put("admin_key", "*");
-
-        return key;
-    }
-
-    private static List<String> buildPermissionKeys(JSONObject key) {
-        List<String> permissions = new Vector<>();
-
-        String ident = key.getString("identity");
-        String read = key.getString("read_key");
-        String write = key.getString("write_key");
-        String admin = key.getString("admin_key");
-
-        permissions.add(String.format("R-%s-%s", ident, read));
-        permissions.add(String.format("W-%s-%s", ident, write));
-        permissions.add(String.format("A-%s-%s", ident, admin));
-
-        return permissions;
-    }
-
     private static String testServer = "*";
+    private static List<String> mainPermissions = null;
+    private static List<String> secondaryPermissions = null;
 
     private static PubSubHandle pubsubHandle;
     private static PubSubHandle secondHandle;
     private static String errorMessage;
     private static boolean isError;
+
+    @BeforeClass
+    public static void setUpBeforeClass() {
+        PubSubIntegrationTestsConfig config = PubSubIntegrationTestsConfig.getInstance();
+        testServer = config.getHost();
+        mainPermissions = config.getMainKeys();
+        secondaryPermissions = config.getSecondaryKeys();
+    }
 
     @Before
     public void setupBeforeEach() {
@@ -80,10 +56,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
-            String identity = keys.getString("identity");
+            List<String> permissions = mainPermissions;
 
             CountDownLatch signal = new CountDownLatch(1);
             String channel = "BOOKS & MOVIES";
@@ -156,10 +129,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
-            String identity = keys.getString("identity");
+            List<String> permissions = mainPermissions;
 
             CountDownLatch signal = new CountDownLatch(1);
             String testChan = "BOOKS & MOVIES";
@@ -225,10 +195,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
-            String identity = keys.getString("identity");
+            List<String> permissions = mainPermissions;
 
             CountDownLatch signal = new CountDownLatch(1);
             
@@ -300,10 +267,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
-            String identity = keys.getString("identity");
+            List<String> permissions = mainPermissions;
 
             CountDownLatch signal = new CountDownLatch(1);
             String subscribeChan = "BOOKS & MOVIES";
@@ -384,11 +348,8 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keysOne = getMainKeys();
-            JSONObject keysTwo = getSecondaryKeys();
-
-            List<String> permissionsOne = buildPermissionKeys(keysOne);
-            List<String> permissionsTwo = buildPermissionKeys(keysTwo);
+            List<String> permissionsOne = mainPermissions;
+            List<String> permissionsTwo = secondaryPermissions;
 
             CountDownLatch signal = new CountDownLatch(2);
             String chan = "BOOKS & MOVIES";
@@ -460,11 +421,8 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
-            String identity = keys.getString("identity");
-
+            List<String> permissions = mainPermissions;
+ 
             CountDownLatch signal = new CountDownLatch(2);
             String chan = "BOOKS & MOVIES";
             String message = "A good book made into a good movie is a good thing, but it doesn't happen often.";
@@ -525,9 +483,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
+            List<String> permissions = mainPermissions;
 
             CountDownLatch signal = new CountDownLatch(1);
 
@@ -587,9 +543,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
+            List<String> permissions = mainPermissions;
 
             AtomicBoolean wasCalled = new AtomicBoolean(false);
             CountDownLatch signal = new CountDownLatch(1);
@@ -639,9 +593,7 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            JSONObject keys = getMainKeys();
-
-            List<String> permissions = buildPermissionKeys(keys);
+            List<String> permissions = mainPermissions;
 
             AtomicReference<String> uuidRef = new AtomicReference<>();
             AtomicInteger timesCalled = new AtomicInteger(0);
