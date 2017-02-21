@@ -4,9 +4,12 @@ import javax.websocket.*;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import java.util.Collections;
 
 import com.gambit.sdk.pubsub.exceptions.*;
+import com.gambit.sdk.pubsub.responses.successes.PubSubResponse;
 
 import org.json.JSONObject;
 
@@ -34,14 +37,16 @@ public class TestPubSubSocket
             CountDownLatch signal = new CountDownLatch(1);
             final long sequence = 1000L; 
 
-            JSONObject expectedResponse = new JSONObject()
+            JSONObject expectedJson = new JSONObject()
                     .put("seq", sequence)
                     .put("action", "subscribe")
                     .put("code", 200)
                     .put("channels", Collections.singletonList("Programming!"));
 
+            PubSubResponse expectedResponse = PubSubResponse.create(expectedJson);
+
             doAnswer((invocation) -> {
-                socket.onMessage(expectedResponse.toString());
+                socket.onMessage(expectedJson.toString());
                 return null;
             }).when(mockServer).sendText(anyString(), any());
 
@@ -50,8 +55,8 @@ public class TestPubSubSocket
                     try {
                         assertEquals(
                             "The response received should be the fake successful response.",
-                            expectedResponse.toString(),
-                            response.toString()
+                            expectedResponse.getRawJson(),
+                            response.getRawJson()
                         );
                     }
                     catch(AssertionError e) {
@@ -68,7 +73,9 @@ public class TestPubSubSocket
                     return null;
                 });
 
-            signal.await();
+            if(!signal.await(2, TimeUnit.SECONDS)) {
+                fail("Timed Out");
+            }
 
             if(isError) {
                 fail(errorMessage);

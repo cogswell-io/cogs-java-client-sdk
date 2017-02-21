@@ -28,9 +28,11 @@ import org.json.JSONException;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.Cache;
 
-import com.gambit.sdk.pubsub.PubSubErrorResponse;
+import com.gambit.sdk.pubsub.responses.successes.*;
+import com.gambit.sdk.pubsub.responses.errors.*;
 
 import com.gambit.sdk.pubsub.exceptions.*;
+import com.gambit.sdk.pubsub.responses.*;
 import com.gambit.sdk.pubsub.handlers.*;
 
 import com.gambit.sdk.pubsub.utils.PubSubUtils;
@@ -147,7 +149,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Maps each outstanding request to the server by their sequence number 
      * with their associated {@link java.util.concurrent.CompletableFuture}
      */
-    private Cache<Long, CompletableFuture<JSONObject>> outstanding;
+    private Cache<Long, CompletableFuture<PubSubResponse>> outstanding;
 
     /**
      * Maps outstanding publish request sequence numbers to their error handlers
@@ -284,8 +286,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param json The request to send to the Pub/Sub server
      * @return {@code CompletableFuture<JSONObject>} future that will contain server response to given request
      */
-    protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
-        CompletableFuture<JSONObject> result = new CompletableFuture<>();
+    protected CompletableFuture<PubSubResponse> sendRequest(long sequence, JSONObject json) {
+        CompletableFuture<PubSubResponse> result = new CompletableFuture<>();
         outstanding.put(sequence, result);
 
         server.sendText(json.toString(), (sendResult) -> {
@@ -341,8 +343,8 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * @param handler The callback to initiate when sending is completed.
      * @return {@code CompletableFuture<JSONObject>} future which will complete when ???
      */
-    protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
-        CompletableFuture<JSONObject> result = new CompletableFuture<>();
+    protected CompletableFuture<PubSubResponse> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
+        CompletableFuture<PubSubResponse> result = new CompletableFuture<>();
         outstanding.put(sequence, result);
         
         server.sendText(json.toString(), (sendResult) -> {
@@ -581,7 +583,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             }
             else if(json.getInt("code") != 200) {
                 seq = new Long(json.getLong("seq"));
-                CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+                CompletableFuture<PubSubResponse> responseFuture = outstanding.getIfPresent(seq);
 
                 if(responseFuture != null) {
                     responseFuture.completeExceptionally(new PubSubException(json.toString()));
@@ -608,10 +610,21 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             }
             else {
                 seq = new Long(json.getLong("seq"));
-                CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+                CompletableFuture<PubSubResponse> responseFuture = outstanding.getIfPresent(seq);
 
-                if(responseFuture != null) {
-                    responseFuture.complete(json);
+                try {
+                    if(responseFuture != null) {
+                        responseFuture.complete(PubSubResponse.create(json));
+                    }
+                }
+                catch(PubSubException ex) {
+                    if(responseFuture != null) {
+                        responseFuture.completeExceptionally(ex);
+                    }
+
+                    if(errorHandler != null) {
+                        errorHandler.onError(new PubSubException(json.toString()));
+                    }
                 }
                 
                 outstanding.invalidate(seq);
@@ -620,7 +633,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
         catch(JSONException e) {
             // Could not parse JSON
             if(seq != null) {
-                CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+                CompletableFuture<PubSubResponse> responseFuture = outstanding.getIfPresent(seq);
                 
                 if(responseFuture != null) {
                     responseFuture.completeExceptionally(e);

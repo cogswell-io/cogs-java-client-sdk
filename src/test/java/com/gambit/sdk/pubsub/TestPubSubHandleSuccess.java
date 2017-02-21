@@ -22,6 +22,9 @@ import java.time.Instant;
 import com.gambit.sdk.pubsub.handlers.PubSubErrorResponseHandler;
 import com.gambit.sdk.pubsub.handlers.PubSubMessageHandler;
 
+import com.gambit.sdk.pubsub.responses.successes.PubSubResponse;
+import com.gambit.sdk.pubsub.exceptions.PubSubException;
+
 import org.json.JSONObject;
 import org.json.JSONArray;
 
@@ -282,8 +285,6 @@ public class TestPubSubHandleSuccess {
                         record.getChannel()
                     );
 
-                    System.out.println("Assertions");
-
                     signal.countDown();
                 }
                 catch(AssertionError e) {
@@ -472,8 +473,8 @@ class TestPubSubSocketSuccess extends PubSubSocket
         return handlers.get(channel);
     }
 
-    protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
-        CompletableFuture<JSONObject> outcome = new CompletableFuture<>();
+    protected CompletableFuture<PubSubResponse> sendRequest(long sequence, JSONObject json) {
+        CompletableFuture<PubSubResponse> outcome = new CompletableFuture<>();
         String action = json.getString("action");
         
         JSONObject result = new JSONObject()
@@ -515,13 +516,17 @@ class TestPubSubSocketSuccess extends PubSubSocket
             break;
         }
 
-        outcome.complete(result);
+        try {
+            outcome.complete(PubSubResponse.create(result));
+        }
+        catch(PubSubException e) {
+            outcome.completeExceptionally(e);
+        }
+
         return outcome;
     }
 
     protected void sendPublish(long sequence, JSONObject json, PubSubErrorResponseHandler errorResponseHandler, SendHandler handler) {
-        System.out.println("In the Test Socket...");
-        
         String channel = json.getString("chan");
         String msg = json.getString("msg");
 
@@ -542,8 +547,8 @@ class TestPubSubSocketSuccess extends PubSubSocket
         );
     }
 
-    protected CompletableFuture<JSONObject> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
-        CompletableFuture<JSONObject> outcome = new CompletableFuture<>();
+    protected CompletableFuture<PubSubResponse> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
+        CompletableFuture<PubSubResponse> outcome = new CompletableFuture<>();
 
         String channel = json.getString("chan");
         String msg = json.getString("msg");
@@ -564,12 +569,18 @@ class TestPubSubSocketSuccess extends PubSubSocket
             )
         );
 
-        outcome.complete(new JSONObject()
+        JSONObject ack = new JSONObject()
             .put("seq", sequence)
             .put("action", "pub")
             .put("code", 200)
-            .put("id", publishMessage.getString("id"))
-        );
+            .put("id", publishMessage.getString("id")); 
+
+        try {
+            outcome.complete(PubSubResponse.create(ack));
+        }
+        catch(PubSubException e) {
+            outcome.completeExceptionally(e);
+        }
 
         return outcome;
     }

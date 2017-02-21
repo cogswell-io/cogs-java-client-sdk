@@ -14,6 +14,8 @@ import java.io.IOException;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
+import com.gambit.sdk.pubsub.responses.successes.*;
+import com.gambit.sdk.pubsub.exceptions.*;
 import com.gambit.sdk.pubsub.handlers.*;
 
 /**
@@ -64,9 +66,14 @@ public class PubSubHandle {
             .put("action", "session-uuid");
 
         socket.sendRequest(seq, request)
-            .thenAcceptAsync((json) -> {
-                UUID uuid = UUID.fromString(json.getString("uuid"));
-                outcome.complete(uuid);
+            .thenAcceptAsync((response) -> {
+                if (response instanceof PubSubSessionUuidResponse) {
+                    PubSubSessionUuidResponse uuidResponse = (PubSubSessionUuidResponse)(response);
+                    outcome.complete(uuidResponse.getSessionUuid());
+                }
+                else {
+                    outcome.completeExceptionally(new PubSubException("Invalid Response to Session UUID"));
+                }
             })
             .exceptionally((error) -> {
                 outcome.completeExceptionally(error);
@@ -95,15 +102,14 @@ public class PubSubHandle {
         socket.addMessageHandler(channel, messageHandler);
 
         socket.sendRequest(seq, request)
-            .thenAcceptAsync((json) -> {
-                List<String> channels = Collections.synchronizedList(new LinkedList<>());
-                JSONArray list = json.getJSONArray("channels");
-
-                for(int i = 0; i < list.length(); ++i) {
-                    channels.add(list.getString(i));
+            .thenAcceptAsync((response) -> {
+                if (response instanceof PubSubSubscribeResponse) {
+                    PubSubSubscribeResponse subResponse = (PubSubSubscribeResponse)(response);
+                    outcome.complete(subResponse.getChannels());
                 }
-
-                outcome.complete(channels);
+                else {
+                    outcome.completeExceptionally(new PubSubException("Invalid Response to Subscribing"));
+                }
             })
             .exceptionally((error) -> {
                 socket.removeMessageHandler(channel);
@@ -130,15 +136,14 @@ public class PubSubHandle {
             .put("channel", channel);
 
         socket.sendRequest(seq, request)
-            .thenAcceptAsync((json) -> {
-                List<String> channels = Collections.synchronizedList(new LinkedList<>());
-                JSONArray list = json.getJSONArray("channels");
-
-                for(int i = 0; i < list.length(); ++i) {
-                    channels.add(list.getString(i));
+            .thenAcceptAsync((response) -> {
+                if(response instanceof PubSubUnsubscribeResponse) {
+                    PubSubUnsubscribeResponse unsubResponse = (PubSubUnsubscribeResponse)(response);
+                    outcome.complete(unsubResponse.getChannels());
                 }
-
-                outcome.complete(channels);
+                else {
+                    outcome.completeExceptionally(new PubSubException("Invalid Response to Unsubscribing"));
+                }
             })
             .exceptionally((error) -> {
                 outcome.completeExceptionally(error);
@@ -162,15 +167,14 @@ public class PubSubHandle {
             .put("action", "unsubscribe-all");
 
         socket.sendRequest(seq, request)
-            .thenAcceptAsync((json) -> {
-                List<String> channels = Collections.synchronizedList(new LinkedList<>());
-                JSONArray list = json.getJSONArray("channels");
-
-                for(int i = 0; i < list.length(); ++i) {
-                    channels.add(list.getString(i));
+            .thenAcceptAsync((response) -> {
+                if (response instanceof PubSubUnsubscribeAllResponse) {
+                    PubSubUnsubscribeAllResponse unsubAllResponse = (PubSubUnsubscribeAllResponse)(response);
+                    outcome.complete(unsubAllResponse.getChannels());
                 }
-
-                outcome.complete(channels);
+                else {
+                    outcome.completeExceptionally(new PubSubException("Invalid Response to Unsubscribing from All Channels"));
+                }
             })
             .exceptionally((error) -> {
                 outcome.completeExceptionally(error);
@@ -194,15 +198,14 @@ public class PubSubHandle {
             .put("action", "subscriptions");
 
         socket.sendRequest(seq, request)
-            .thenAcceptAsync((json) -> {
-                List<String> channels = Collections.synchronizedList(new LinkedList<>());
-                JSONArray list = json.getJSONArray("channels");
-
-                for(int i = 0; i < list.length(); ++i) {
-                    channels.add(list.getString(i));
+            .thenAcceptAsync((response) -> {
+                if (response instanceof PubSubListSubscriptionsResponse) {
+                    PubSubListSubscriptionsResponse listResponse = (PubSubListSubscriptionsResponse)(response);
+                    outcome.complete(listResponse.getChannels());
                 }
-
-                outcome.complete(channels);
+                else {
+                    outcome.completeExceptionally(new PubSubException("Invalid Response to Listing Subscriptions"));
+                }
             })
             .exceptionally((error) -> {
                 outcome.completeExceptionally(error);
@@ -301,9 +304,14 @@ public class PubSubHandle {
                 outcome.completeExceptionally(sendResult.getException());
             }
         })
-        .thenAcceptAsync((json) -> {
-            UUID uuid = UUID.fromString(json.getString("id"));
-            outcome.complete(uuid);
+        .thenAcceptAsync((response) -> {
+            if (response instanceof PubSubPublishAckResponse) {
+                PubSubPublishAckResponse pubResponse = (PubSubPublishAckResponse)(response);
+                outcome.complete(pubResponse.getMessageId());
+            }
+            else {
+                outcome.completeExceptionally(new PubSubException("Invalid Response to Publishing"));
+            }
         })
         .exceptionally((error) -> {
             outcome.completeExceptionally(error);

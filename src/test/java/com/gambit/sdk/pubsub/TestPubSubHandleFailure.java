@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.List;
 
 import com.gambit.sdk.pubsub.handlers.PubSubErrorResponseHandler;
+import com.gambit.sdk.pubsub.responses.successes.PubSubResponse;
 
 import org.json.JSONObject;
 
@@ -402,8 +403,8 @@ class TestPubSubSocketFailure extends PubSubSocket
         subscriptions.add("DIY CONSTRUCTION");
     }
 
-    protected CompletableFuture<JSONObject> sendRequest(long sequence, JSONObject json) {
-        CompletableFuture<JSONObject> outcome = new CompletableFuture<>();
+    protected CompletableFuture<PubSubResponse> sendRequest(long sequence, JSONObject json) {
+        CompletableFuture<PubSubResponse> outcome = new CompletableFuture<>();
         String action = json.getString("action");
 
         Throwable ex = null;

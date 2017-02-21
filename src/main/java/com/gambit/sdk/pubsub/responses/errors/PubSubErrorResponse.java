@@ -1,4 +1,4 @@
-package com.gambit.sdk.pubsub;
+package com.gambit.sdk.pubsub.responses.errors;
 
 import java.util.Optional;
 
@@ -40,7 +40,7 @@ public class PubSubErrorResponse {
      * @param message Description of the error, if any
      * @param details Details about the error, if any
      */
-    protected PubSubErrorResponse(int code, Long seq, String action, String details, String message) {
+    public PubSubErrorResponse(int code, Long seq, String action, String message, String details) {
         this.sequence = seq;
         this.code = code;
         this.action = action;

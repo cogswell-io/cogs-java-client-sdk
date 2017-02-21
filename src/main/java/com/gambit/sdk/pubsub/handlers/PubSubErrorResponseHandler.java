@@ -1,6 +1,6 @@
 package com.gambit.sdk.pubsub.handlers;
 
-import com.gambit.sdk.pubsub.PubSubErrorResponse;
+import com.gambit.sdk.pubsub.responses.errors.PubSubErrorResponse;
 
 /**
  * Represents a handler function for Cogswell Pub/Sub close events.
