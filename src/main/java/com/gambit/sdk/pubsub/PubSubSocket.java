@@ -555,39 +555,40 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
         // TODO: validate format of message received from server, if invalid call error
 
-        JSONObject json = new JSONObject(message);
+        Long seq = null;
 
-        if(json.getString("action").equals("msg")) {
-            String id = json.getString("id");
-            String msg = json.getString("msg");
-            String time = json.getString("time");
-            String chan = json.getString("chan");
+        try {
+            JSONObject json = new JSONObject(message);
+            if(json.getString("action").equals("msg")) {
+                String id = json.getString("id");
+                String msg = json.getString("msg");
+                String time = json.getString("time");
+                String chan = json.getString("chan");
 
-            PubSubMessageRecord record = new PubSubMessageRecord(chan, msg, time, id);
-            PubSubMessageHandler handler = msgHandlers.get(chan);
-            handler.onMessage(record);
+                PubSubMessageRecord record = new PubSubMessageRecord(chan, msg, time, id);
+                PubSubMessageHandler handler = msgHandlers.get(chan);
+                handler.onMessage(record);
 
-            if(generalMsgHandler != null) {
-                generalMsgHandler.onMessage(record);
+                if(generalMsgHandler != null) {
+                    generalMsgHandler.onMessage(record);
+                }
             }
-        }
-        else if(!json.has("seq")) {
-            // This should never happen, but if it does, propogate to error handle if provided.
-            if(errorHandler != null) {
-                errorHandler.onError(new PubSubException(json.toString()));
+            else if(!json.has("seq")) {
+                // This should never happen, but if it does, propogate to error handle if provided.
+                if(errorHandler != null) {
+                    errorHandler.onError(new PubSubException(json.toString()));
+                }
             }
-        }
-        else if(json.getInt("code") != 200) {
-            long seq = json.getLong("seq");
-            CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+            else if(json.getInt("code") != 200) {
+                seq = new Long(json.getLong("seq"));
+                CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
 
-            if(responseFuture != null) {
-                responseFuture.completeExceptionally(new PubSubException(json.toString()));
-            }
+                if(responseFuture != null) {
+                    responseFuture.completeExceptionally(new PubSubException(json.toString()));
+                }
 
-            PubSubErrorResponseHandler publishErrorResponseHandler = publishErrorHandlers.getIfPresent(seq);
+                PubSubErrorResponseHandler publishErrorResponseHandler = publishErrorHandlers.getIfPresent(seq);
 
-            try {
                 String action = json.getString("action");
                 String details = json.getString("details");
                 String errorMessage = json.getString("message");
@@ -602,24 +603,33 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 if(errorResponseHandler != null) {
                     errorResponseHandler.onErrorResponse(errorResponse);
                 }
+
+                outstanding.invalidate(seq);
             }
-            catch(JSONException e) {
-                if(errorHandler != null) {
-                    errorHandler.onError(e);
+            else {
+                seq = new Long(json.getLong("seq"));
+                CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+
+                if(responseFuture != null) {
+                    responseFuture.complete(json);
+                }
+                
+                outstanding.invalidate(seq);
+            }
+        }
+        catch(JSONException e) {
+            // Could not parse JSON
+            if(seq != null) {
+                CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
+                
+                if(responseFuture != null) {
+                    responseFuture.completeExceptionally(e);
                 }
             }
 
-            outstanding.invalidate(seq);
-        }
-        else {
-            long seq = json.getLong("seq");
-            CompletableFuture<JSONObject> responseFuture = outstanding.getIfPresent(seq);
-
-            if(responseFuture != null) {
-                responseFuture.complete(json);
+            if(errorHandler != null) {
+                errorHandler.onError(e);
             }
-            
-            outstanding.invalidate(seq);
         }
     }
 
