@@ -2,4 +2,4 @@
 /.gradle
 /.idea
 .project
-/src/main/resources
+/src/main/resources/com/gambit/sdk/pubsub/config.json

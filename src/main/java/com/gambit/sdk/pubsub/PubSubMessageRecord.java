@@ -3,6 +3,9 @@ package com.gambit.sdk.pubsub;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 /**
  * Represents a Cogswell Pub/Sub message record holding published message content and associated information. 
  */
@@ -29,19 +32,15 @@ public class PubSubMessageRecord
     private final UUID id;
 
     /**
-     * Creates the PubSubMessageRecord filled in with the provided information.
-     *
-     * @param channel   Channel to which the message is published.
-     * @param message   Content of the message that is published.
-     * @param timestamp String representing time the message was published, formatted as ISO_INSTANT.
-     * @param id        UUID formatted string representing the UUID of the message to be published. 
+     * Creates the PubSubMessageRecord filled in with info from the message 
+     * 
+     * @param message The message to parse
      */
-    public PubSubMessageRecord(String channel, String message, String timestamp, String id) {
-        this.channel = channel;
-        this.message = message;
-
-        this.timestamp = Instant.parse(timestamp);
-        this.id = UUID.fromString(id);
+    public PubSubMessageRecord(JSONObject jsonObj) throws JSONException {
+        message = jsonObj.getString("msg");
+        channel = jsonObj.getString("chan");
+        id = UUID.fromString(jsonObj.getString("id"));
+        timestamp = Instant.parse(jsonObj.getString("time"));
     }
 
     /**

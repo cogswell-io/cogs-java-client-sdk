@@ -537,14 +537,7 @@ class TestPubSubSocketSuccess extends PubSubSocket
             .put("chan", channel)
             .put("msg", msg);
 
-        handlers.get(channel).onMessage(
-            new PubSubMessageRecord(
-                publishMessage.getString("chan"),
-                publishMessage.getString("msg"),
-                publishMessage.getString("time"),
-                publishMessage.getString("id")
-            )
-        );
+        handlers.get(channel).onMessage(new PubSubMessageRecord(publishMessage));
     }
 
     protected CompletableFuture<PubSubResponse> sendPublishWithAck(long sequence, JSONObject json, SendHandler handler) {
@@ -560,14 +553,7 @@ class TestPubSubSocketSuccess extends PubSubSocket
             .put("chan", channel)
             .put("msg", msg);
 
-        handlers.get(channel).onMessage(
-            new PubSubMessageRecord(
-                publishMessage.getString("chan"),
-                publishMessage.getString("msg"),
-                publishMessage.getString("time"),
-                publishMessage.getString("id")
-            )
-        );
+        handlers.get(channel).onMessage(new PubSubMessageRecord(publishMessage));
 
         JSONObject ack = new JSONObject()
             .put("seq", sequence)

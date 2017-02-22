@@ -561,18 +561,21 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
         try {
             JSONObject json = new JSONObject(message);
+
             if(json.getString("action").equals("msg")) {
-                String id = json.getString("id");
-                String msg = json.getString("msg");
-                String time = json.getString("time");
-                String chan = json.getString("chan");
+                try {
+                    PubSubMessageRecord record = new PubSubMessageRecord(json);
+                    PubSubMessageHandler handler = msgHandlers.get(record.getChannel());
+                    handler.onMessage(record);
 
-                PubSubMessageRecord record = new PubSubMessageRecord(chan, msg, time, id);
-                PubSubMessageHandler handler = msgHandlers.get(chan);
-                handler.onMessage(record);
-
-                if(generalMsgHandler != null) {
-                    generalMsgHandler.onMessage(record);
+                    if(generalMsgHandler != null) {
+                        generalMsgHandler.onMessage(record);
+                    }
+                }
+                catch(Exception e) {
+                    if(errorHandler != null) {
+                        errorHandler.onError(e);
+                    }
                 }
             }
             else if(!json.has("seq")) {

@@ -1,0 +1,15 @@
+{
+    "host": "*",
+
+    "mainKeys": {
+        "adminKey": "A-*-*",
+        "readKey": "R-*-*",
+        "writeKey": "W-*-*"
+    },
+
+    "secondaryKeys": {
+        "adminKey": "A-*-*",
+        "readKey": "R-*-*",
+        "writeKey": "W-*-*"
+    }
+}
