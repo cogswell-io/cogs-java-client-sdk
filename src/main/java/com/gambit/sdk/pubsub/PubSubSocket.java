@@ -589,21 +589,22 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                     responseFuture.completeExceptionally(new PubSubException(json.toString()));
                 }
 
-                PubSubErrorResponseHandler publishErrorResponseHandler = publishErrorHandlers.getIfPresent(seq);
+                try {
+                    PubSubErrorResponseHandler publishErrorResponseHandler = publishErrorHandlers.getIfPresent(seq);
+                    PubSubErrorResponse errorResponse = PubSubErrorResponse.create(json);
 
-                String action = json.getString("action");
-                String details = json.getString("details");
-                String errorMessage = json.getString("message");
-                int code = json.getInt("code");
+                    if(publishErrorResponseHandler != null) {
+                        publishErrorResponseHandler.onErrorResponse(errorResponse);
+                    }
 
-                PubSubErrorResponse errorResponse = new PubSubErrorResponse(code, seq, action, details, errorMessage);
-
-                if(publishErrorResponseHandler != null) {
-                    publishErrorResponseHandler.onErrorResponse(errorResponse);
+                    if(errorResponseHandler != null) {
+                        errorResponseHandler.onErrorResponse(errorResponse);
+                    }
                 }
-
-                if(errorResponseHandler != null) {
-                    errorResponseHandler.onErrorResponse(errorResponse);
+                catch(PubSubException e) {
+                    if(errorHandler != null) {
+                        errorHandler.onError(e);
+                    }
                 }
 
                 outstanding.invalidate(seq);

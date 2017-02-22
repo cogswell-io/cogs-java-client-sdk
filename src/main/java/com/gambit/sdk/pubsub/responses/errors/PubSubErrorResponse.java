@@ -1,6 +1,11 @@
 package com.gambit.sdk.pubsub.responses.errors;
 
+import com.gambit.sdk.pubsub.exceptions.PubSubException;
+
 import java.util.Optional;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Represents the information contained in an error response received from the Pub/Sub server.
@@ -31,6 +36,39 @@ public class PubSubErrorResponse {
      */
     private Long sequence;
 
+    public static PubSubErrorResponse create(JSONObject response) throws JSONException, PubSubException {
+        if (!response.has("seq")) {
+            return new PubSubInvalidRequestResponse(response);
+        }
+
+        switch(response.getInt("code")) {
+            case 500:
+                return new PubSubErrorResponse(response);
+
+            case 400:
+                return new PubSubInvalidFormatResponse(response);
+
+            case 401:
+                return new PubSubIncorrectPermissionsResponse(response);
+
+            case 404: {
+                switch(response.getString("action")) {
+                    case "unsubscribe":
+                        return new PubSubSubscriptionNotFoundResponse(response);
+
+                    case "pub":
+                        return new PubSubNoSubscriptionsResponse(response);
+
+                    default:
+                        throw new PubSubException("Unknown Error Response from Server");
+                }
+            }
+            
+            default:
+                throw new PubSubException("Unknown Error Response from Server");
+        }
+    }
+
     /**
      * Fills an error response with information about the error.
      *
@@ -40,12 +78,24 @@ public class PubSubErrorResponse {
      * @param message Description of the error, if any
      * @param details Details about the error, if any
      */
-    public PubSubErrorResponse(int code, Long seq, String action, String message, String details) {
-        this.sequence = seq;
-        this.code = code;
-        this.action = action;
-        this.details = details;
-        this.message = message;
+    public PubSubErrorResponse(JSONObject response) throws JSONException {
+        if(response.has("seq")) {
+            sequence = response.getLong("seq");
+        }
+
+        if(response.has("details")) {
+            details = response.getString("details");
+        }
+
+        if(response.has("action")) {
+            action = response.getString("action");
+        }
+
+        if(response.has("message")) {
+            message = response.getString("message");
+        }
+
+        code = response.getInt("code");
     }
 
     /**
