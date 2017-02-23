@@ -58,7 +58,12 @@ public class PubSubAuth
     protected PubSubAuth(List<String> keys, UUID session)
         throws NoSuchAlgorithmException, UnsupportedEncodingException, InvalidKeyException 
     {
-        generatePayload(keys, session);
+        if(0 < keys.size() && keys.size() <= 3) {
+            generatePayload(keys, session);
+        }
+        else {
+            throw new IllegalArgumentException("There must be at least one key in the keys list.");
+        }
     }
 
     /**
@@ -141,8 +146,16 @@ public class PubSubAuth
         }
 
         byte[] accum = permIdents.get(0).array();
-        accum = byteXor(accum, permIdents.get(1).array());
-        accum = byteXor(accum, permIdents.get(2).array());
+
+        // Only try to accumulate the second key set if it exists
+        if(permIdents.size() > 1) {
+            accum = byteXor(accum, permIdents.get(1).array());
+        }
+
+        // Only try to accumulate the third key set if it exists.
+        if(permIdents.size() > 2) {
+            accum = byteXor(accum, permIdents.get(2).array());
+        }
 
         this.payloadHmac = DatatypeConverter.printHexBinary(accum);
         this.payloadHmac = this.payloadHmac.toLowerCase();

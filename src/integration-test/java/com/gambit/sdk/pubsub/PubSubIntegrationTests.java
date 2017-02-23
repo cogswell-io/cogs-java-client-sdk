@@ -40,7 +40,7 @@ public class PubSubIntegrationTests {
     public static void setUpBeforeClass() {
         PubSubIntegrationTestsConfig config = PubSubIntegrationTestsConfig.getInstance();
         testServer = config.getHost();
-        primaryPermissions = config.getMainKeys();
+        primaryPermissions = config.getPrimaryKeys();
         secondaryPermissions = config.getSecondaryKeys();
     }
 
@@ -680,5 +680,50 @@ public class PubSubIntegrationTests {
             ex.printStackTrace();
         }
 
+    }
+
+    @Test
+    public void testCloseEventIsEmitted() {
+        try {
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
+            CountDownLatch signal = new CountDownLatch(1);
+
+            PubSubSDK.getInstance().connect(primaryPermissions, options)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    pubsubHandle.onClose(voided -> signal.countDown());
+
+                    return pubsubHandle.close();
+                })
+                .thenAcceptAsync(voided -> { /* Do Nothing */ })
+                .exceptionally((error) -> {
+                    errorMessage = error.getMessage();
+                    isError = true;
+                    signal.countDown();
+                    
+                    return null;
+                });
+
+            try {
+                boolean completed = signal.await(2, TimeUnit.SECONDS);
+
+                if(!completed) {
+                    fail("The test timed out before it could complete...");
+                }
+
+                if(isError) {
+                    fail("There was an exception: " + errorMessage);
+                }
+            }
+            catch(InterruptedException e) {
+                fail("The test was unable to finish properly.");
+            }
+        }
+        catch(Throwable e) {
+            System.out.println("Exception Class: " + e.getClass());
+            fail("There was an exception thrown: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

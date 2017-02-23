@@ -32,6 +32,11 @@ public class PubSubErrorResponse {
     private String message;
 
     /**
+     * Holds the raw json that was used to fill out this error response
+     */
+    private String rawJson;
+
+    /**
      * Holds the sequence number that precipitated the error response from the server.
      */
     private Long sequence;
@@ -96,6 +101,7 @@ public class PubSubErrorResponse {
         }
 
         code = response.getInt("code");
+        rawJson = response.toString();
     }
 
     /**
@@ -105,6 +111,15 @@ public class PubSubErrorResponse {
      */
     public int getCode() {
         return code;
+    }
+
+    /**
+     * Provides a raw JSON string representing the error response
+     *
+     * @return String Raw JSON string representing the response
+     */
+    public String getRawJson() {
+        return rawJson;
     }
 
     /**

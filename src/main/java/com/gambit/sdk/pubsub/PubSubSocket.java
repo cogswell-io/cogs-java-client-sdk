@@ -556,8 +556,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             rawRecordHandler.onRawRecord(message);
         }
 
-        // TODO: validate format of message received from server, if invalid call error
-
         Long seq = null;
 
         try {
@@ -589,13 +587,13 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 seq = new Long(json.getLong("seq"));
                 CompletableFuture<PubSubResponse> responseFuture = outstanding.getIfPresent(seq);
 
-                if(responseFuture != null) {
-                    responseFuture.completeExceptionally(new PubSubException(json.toString()));
-                }
-
                 try {
                     PubSubErrorResponseHandler publishErrorResponseHandler = publishErrorHandlers.getIfPresent(seq);
                     PubSubErrorResponse errorResponse = PubSubErrorResponse.create(json);
+
+                    if(responseFuture != null) {
+                        responseFuture.completeExceptionally(new PubSubErrorResponseException(errorResponse));
+                    }
 
                     if(publishErrorResponseHandler != null) {
                         publishErrorResponseHandler.onErrorResponse(errorResponse);

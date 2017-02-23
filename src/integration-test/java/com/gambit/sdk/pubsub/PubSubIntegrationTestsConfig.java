@@ -15,7 +15,7 @@ public class PubSubIntegrationTestsConfig {
     private static PubSubIntegrationTestsConfig instance;
 
     private String host;
-    private List<String> mainKeys;
+    private List<String> primaryKeys;
     private List<String> secondaryKeys;
 
     public static PubSubIntegrationTestsConfig getInstance() {
@@ -45,10 +45,10 @@ public class PubSubIntegrationTestsConfig {
             JSONObject main = null; 
             JSONObject secondary = null;
 
-            if(configJSON.has("mainKeys")) {
-                mainKeys = new ArrayList<>();
-                main = configJSON.getJSONObject("mainKeys");
-                buildKeys(mainKeys, main);
+            if(configJSON.has("primaryKeys")) {
+                primaryKeys = new ArrayList<>();
+                main = configJSON.getJSONObject("primaryKeys");
+                buildKeys(primaryKeys, main);
             }
 
             if(configJSON.has("secondaryKeys")) {
@@ -84,8 +84,8 @@ public class PubSubIntegrationTestsConfig {
         return host;
     }
 
-    public List<String> getMainKeys() {
-        return mainKeys;
+    public List<String> getPrimaryKeys() {
+        return primaryKeys;
     }
 
     public List<String> getSecondaryKeys() {

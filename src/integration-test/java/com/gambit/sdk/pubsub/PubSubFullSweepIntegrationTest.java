@@ -48,7 +48,7 @@ public class PubSubFullSweepIntegrationTest {
     public void setUpBeforeEach() {
         PubSubIntegrationTestsConfig config = PubSubIntegrationTestsConfig.getInstance();
         testServer = config.getHost();
-        primaryPermissions = config.getMainKeys();
+        primaryPermissions = config.getPrimaryKeys();
         secondaryPermissions = config.getSecondaryKeys();
 
         testChannels = Collections.synchronizedMap(new HashMap<>());

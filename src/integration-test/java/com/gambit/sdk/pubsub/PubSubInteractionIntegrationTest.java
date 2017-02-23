@@ -39,7 +39,7 @@ public class PubSubInteractionIntegrationTest {
     public static void setUpBeforeClass() {
         PubSubIntegrationTestsConfig config = PubSubIntegrationTestsConfig.getInstance();
         testServer = config.getHost();
-        primaryPermissions = config.getMainKeys();
+        primaryPermissions = config.getPrimaryKeys();
         secondaryPermissions = config.getSecondaryKeys();
     }
 

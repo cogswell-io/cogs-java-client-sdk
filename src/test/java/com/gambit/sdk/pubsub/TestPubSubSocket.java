@@ -116,8 +116,8 @@ public class TestPubSubSocket
                 .exceptionally((error) -> {
                     try {
                         assertTrue(
-                            "The expected error type should be an PubSubInternalError",
-                            error.getCause() instanceof PubSubException
+                            "The expected error type should be an PubSubErrorResponseException",
+                            error.getCause() instanceof PubSubErrorResponseException
                         );
                     }
                     catch(AssertionError e) {
@@ -170,8 +170,8 @@ public class TestPubSubSocket
                 .exceptionally((error) -> {
                     try {
                         assertTrue(
-                            "The expected error type should be an PubSubInternalError",
-                            error.getCause() instanceof PubSubException
+                            "The expected error type should be an PubSubErrorResponseException",
+                            error.getCause() instanceof PubSubErrorResponseException
                         );
                     }
                     catch(AssertionError e) {
@@ -225,8 +225,8 @@ public class TestPubSubSocket
                 .exceptionally((error) -> {
                     try {
                         assertTrue(
-                            "The expected error type should be an PubSubInternalError",
-                            error.getCause() instanceof PubSubException
+                            "The expected error type should be an PubSubErrorResponseException",
+                            error.getCause() instanceof PubSubErrorResponseException
                         );
                     }
                     catch(AssertionError e) {
@@ -279,8 +279,8 @@ public class TestPubSubSocket
                 .exceptionally((error) -> {
                     try {
                         assertTrue(
-                            "The expected error type should be an PubSubInternalError",
-                            error.getCause() instanceof PubSubException
+                            "The expected error type should be an PubSubErrorResponseException",
+                            error.getCause() instanceof PubSubErrorResponseException
                         );
                     }
                     catch(AssertionError e) {
@@ -333,8 +333,8 @@ public class TestPubSubSocket
                 .exceptionally((error) -> {
                     try {
                         assertTrue(
-                            "The expected error type should be an PubSubInternalError",
-                            error.getCause() instanceof PubSubException
+                            "The expected error type should be an PubSubErrorResponseException",
+                            error.getCause() instanceof PubSubErrorResponseException
                         );
                     }
                     catch(AssertionError e) {

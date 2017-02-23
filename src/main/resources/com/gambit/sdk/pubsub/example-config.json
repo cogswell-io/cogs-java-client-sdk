@@ -1,7 +1,7 @@
 {
     "host": "*",
 
-    "mainKeys": {
+    "primaryKeys": {
         "adminKey": "A-*-*",
         "readKey": "R-*-*",
         "writeKey": "W-*-*"
