@@ -78,6 +78,7 @@ public class PubSubFullSweepIntegrationTest {
     private static String healthMessage = "Feedback is a useful mechanism";
 
     private static CountDownLatch waitToFinish = new CountDownLatch(1);
+    private static CountDownLatch receivedHealth = new CountDownLatch(1);
 
     public void bookHandler(PubSubMessageRecord record) {
         assertEquals(
@@ -107,6 +108,7 @@ public class PubSubFullSweepIntegrationTest {
         );
 
         messageId = record.getId();
+        receivedHealth.countDown();
     }
 
     public void timeHandler(PubSubMessageRecord record) {
@@ -196,7 +198,7 @@ public class PubSubFullSweepIntegrationTest {
     public void onNewSession(UUID uuid) {
         assertFalse(
             "The new session should not have the same UUID as a previous session...",
-            messageId.toString().equals(uuid.toString())
+            sessionId.toString().equals(uuid.toString())
         );
     }
 
@@ -226,7 +228,6 @@ public class PubSubFullSweepIntegrationTest {
 
             pubsubSDK.connect(primary, options)
                 .thenComposeAsync((handle) -> {
-                    ;
                     pubsubHandle = handle;
 
                     pubsubHandle.onErrorResponse(this::onErrorResponse);
@@ -240,15 +241,12 @@ public class PubSubFullSweepIntegrationTest {
                     return pubsubHandle.subscribe(testChannels.get("health"), this::healthHandler);
                 })
                 .thenComposeAsync((subscriptions) -> {
-                    ;
                     return pubsubHandle.subscribe(testChannels.get("books"), this::bookHandler);
                 })
                 .thenComposeAsync((subscriptions) -> {
-                    ;
                     return pubsubHandle.subscribe(testChannels.get("time"), this::timeHandler);
                 })
                 .thenComposeAsync((subscriptions) -> {
-                    ;
                     List<String> expectedChannels = Collections.synchronizedList(new ArrayList<>(testChannels.values()));
                     Collections.sort(expectedChannels);
                     Collections.sort(subscriptions);
@@ -269,11 +267,9 @@ public class PubSubFullSweepIntegrationTest {
                     return pubsubHandle.publish(testChannels.get("books"), bookMessages.get("desired"));
                 })
                 .thenComposeAsync((sequence) -> {
-                    ;
                     return pubsubHandle.unsubscribe(testChannels.get("books"));
                 })
                 .thenComposeAsync((subscriptions) -> {
-                    ;
                     Collections.sort(channels);
                     Collections.sort(subscriptions);
 
@@ -293,11 +289,9 @@ public class PubSubFullSweepIntegrationTest {
                     return pubsubHandle.publish(testChannels.get("books"), bookMessages.get("filtered"));
                 })
                 .thenComposeAsync((sequence) -> {
-                    ;
                     return pubsubHandle.listSubscriptions();
                 })
                 .thenComposeAsync((subscriptions) -> {
-                    ;
                     Collections.sort(channels);
                     Collections.sort(subscriptions);
 
@@ -317,16 +311,35 @@ public class PubSubFullSweepIntegrationTest {
                     return pubsubHandle.publishWithAck(testChannels.get("health"), healthMessage);
                 })
                 .thenComposeAsync((uuid) -> {
-                    ;
-                    messageId = uuid;
+                    try {
+                        boolean completed = receivedHealth.await(2, TimeUnit.SECONDS);
+                        
+                        if(!completed) {
+                            isError = true;
+                            errorMessage = "Did not receive the published health message...";
+                        }
+                        else {
+                            assertEquals(
+                                "The published health message and the acknowledged message should be the same...",
+                                messageId.toString(),
+                                uuid.toString()
+                            );
+                        }
+                    }
+                    catch(InterruptedException e) {
+                        isError = true;
+                        errorMessage = "Interrupted waiting for the published health message: " + e.getMessage();
+                    }
+                    catch(AssertionError ex) {
+                        isError = true;
+                        errorMessage = "Published healht message problem: " + ex.getMessage();
+                    }
 
                     return pubsubHandle.getSessionUuid();
                 })
                 .thenAcceptAsync((uuid) -> {
-                    ;
                     sessionId = uuid;
                     pubsubHandle.dropConnection(new PubSubDropConnectionOptions(1));
-                    ;
                 })
                 .exceptionally((error) -> {
                     errorMessage = error.getMessage();
