@@ -248,6 +248,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
     {
         this.projectKeys = projectKeys;
         this.options = options;
+        this.sessionUuid = options.getSessionUuid();
 
         this.publishErrorHandlers = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();
         this.publishRequests = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.SECONDS).build();

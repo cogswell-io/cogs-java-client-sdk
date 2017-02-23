@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Arrays;
 import java.util.Vector;
 import java.util.List;
+import java.util.UUID;
 
 import java.util.Random;
 
@@ -481,38 +482,50 @@ public class PubSubIntegrationTests {
     @Test
     public void testGetSession() {
         try {
-            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
+            PubSubOptions firstOptions = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            List<String> permissions = primaryPermissions;
 
+            AtomicReference<UUID> sessionId = new AtomicReference<>(UUID.randomUUID());
             CountDownLatch signal = new CountDownLatch(1);
 
-            pubsubSDK.connect(permissions, options)
+            pubsubSDK.connect(primaryPermissions, firstOptions)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
 
-                    pubsubHandle.onClose((error) -> {
-                        signal.countDown();
-                    });
+                    return pubsubHandle.getSessionUuid();
+                })
+                .thenComposeAsync((uuid) -> {
+                    sessionId.set(uuid);
+
+                    return pubsubHandle.close();
+                })
+                .thenComposeAsync((subs) -> {
+                    PubSubOptions secondOptions = new PubSubOptions(testServer, null, null, sessionId.get());
+
+                    return pubsubSDK.connect(primaryPermissions, secondOptions);
+                })
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
 
                     return pubsubHandle.getSessionUuid();
                 })
                 .thenComposeAsync((uuid) -> {
                     try {
-                        assertNotNull(
-                            "The UUID obtained from the handle should not be null",
-                            uuid
+                        assertEquals(
+                            "The session UUID upon connecting the second time should have been the same...",
+                            sessionId.get().toString(),
+                            uuid.toString()
                         );
                     }
                     catch(AssertionError e) {
                         isError = true;
-                        errorMessage = e.getMessage();
+                        errorMessage = "Sessions did not match: " + e.getMessage();
                     }
 
                     return pubsubHandle.close();
                 })
-                .thenAcceptAsync((subs) -> {
-                    // No need to do anything here
+                .thenAcceptAsync((voided) -> {
+                    signal.countDown();
                 })
                 .exceptionally((error) -> {
                     isError = true;
