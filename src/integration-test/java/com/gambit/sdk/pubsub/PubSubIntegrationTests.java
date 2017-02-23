@@ -483,11 +483,11 @@ public class PubSubIntegrationTests {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+            List<String> permissions = primaryPermissions;
 
-            AtomicReference<UUID> sessionUuid = new AtomicReference(UUID.randomUUID());
             CountDownLatch signal = new CountDownLatch(1);
 
-            pubsubSDK.connect(primaryPermissions, options)
+            pubsubSDK.connect(permissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
 
