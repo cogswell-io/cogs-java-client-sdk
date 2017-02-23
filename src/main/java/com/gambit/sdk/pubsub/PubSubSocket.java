@@ -369,7 +369,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      */
     protected void dropConnection(PubSubDropConnectionOptions dropOptions) {
         try {
-            System.out.println("Closing Socket");
             autoReconnectDelay.set(dropOptions.getAutoReconnectDelay());
             websocketSession.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "Dropped Connection"));
         }

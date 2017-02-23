@@ -35,7 +35,7 @@ public class PubSubIntegrationTests {
     private static String errorMessage;
     private static boolean isError;
 
-    //@BeforeClass
+    @BeforeClass
     public static void setUpBeforeClass() {
         PubSubIntegrationTestsConfig config = PubSubIntegrationTestsConfig.getInstance();
         testServer = config.getHost();
@@ -43,7 +43,7 @@ public class PubSubIntegrationTests {
         secondaryPermissions = config.getSecondaryKeys();
     }
 
-    //@Before
+    @Before
     public void setupBeforeEach() {
         pubsubHandle = null;
         secondHandle = null;
@@ -51,7 +51,7 @@ public class PubSubIntegrationTests {
         isError = false;
     }
 
-    //@Test
+    @Test
     public void testSubscribeAndUnsubscribe() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -124,7 +124,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testReceiveMessageForSubscription() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -190,7 +190,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testListingSubscriptions() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -262,7 +262,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testNoReceiveOnUnsubscribedChannel() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -343,7 +343,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testTwoHandlesReceiveSameMessage() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -416,7 +416,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testPublishWithAck() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -478,16 +478,16 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testGetSession() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
             PubSubSDK pubsubSDK = PubSubSDK.getInstance();
-            List<String> permissions = primaryPermissions;
 
+            AtomicReference<UUID> sessionUuid = new AtomicReference(UUID.randomUUID());
             CountDownLatch signal = new CountDownLatch(1);
 
-            pubsubSDK.connect(permissions, options)
+            pubsubSDK.connect(primaryPermissions, options)
                 .thenComposeAsync((handle) -> {
                     pubsubHandle = handle;
 
@@ -538,7 +538,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testReconnectOnConnectionDrop() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
@@ -588,7 +588,7 @@ public class PubSubIntegrationTests {
         }
     }
 
-    //@Test
+    @Test
     public void testSameSessionAfterDroppedConnection() {
         try {
             PubSubOptions options = new PubSubOptions(testServer, null, null, null);
