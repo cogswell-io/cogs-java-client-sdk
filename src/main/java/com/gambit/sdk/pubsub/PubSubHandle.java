@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 
 import com.gambit.sdk.pubsub.responses.successes.*;
+import com.gambit.sdk.pubsub.responses.errors.PubSubErrorResponse;
 import com.gambit.sdk.pubsub.exceptions.*;
 import com.gambit.sdk.pubsub.handlers.*;
 
