@@ -49,4 +49,20 @@ Run the following command under the `cogs-java-client-sdk` directory.
 gradlew.bat install
 ```
 
+## Build the JAR File Only
 
+If you are only interested in building the `.jar` file from the source,
+then you can run the command below. The new `.jar` file can be found
+in the directory `cogs-java-client-sdk/build/libs`.
+
+### On Linux
+
+```bash
+./gradlew build
+```
+
+### On Windows
+
+```bash
+gradlew.bat build
+```
