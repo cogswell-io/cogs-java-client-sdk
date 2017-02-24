@@ -29,7 +29,7 @@ repositories {
 }
 
 dependencies {
-    compile group: 'io.cogswell', name: 'cogs-java-client-sdk', version: '1.1.0'
+    compile group: 'io.cogswell', name: 'cogs-java-client-sdk', version: '2.0.0'
 }
 ```
 
