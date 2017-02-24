@@ -1,6 +1,6 @@
 package com.gambit.sdk.pubsub.responses.successes;
 
-import com.gambit.sdk.pubsub.exceptions.PubSubException;
+import com.gambit.sdk.pubsub.exceptions.*;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -13,28 +13,33 @@ public class PubSubResponse {
 
     private int code = 200;
 
-    public static PubSubResponse create(JSONObject response) throws JSONException, PubSubException {
-        switch(response.getString("action")) {
-            case "session-uuid": 
-                return new PubSubSessionUuidResponse(response);
+    public static PubSubResponse create(JSONObject response) throws PubSubException {
+        try {
+            switch(response.getString("action")) {
+                case "session-uuid": 
+                    return new PubSubSessionUuidResponse(response);
 
-            case "subscribe":
-                return new PubSubSubscribeResponse(response);
+                case "subscribe":
+                    return new PubSubSubscribeResponse(response);
 
-            case "unsubscribe":
-                return new PubSubUnsubscribeResponse(response);
+                case "unsubscribe":
+                    return new PubSubUnsubscribeResponse(response);
 
-            case "unsubscribe-all":
-                return new PubSubUnsubscribeAllResponse(response);
+                case "unsubscribe-all":
+                    return new PubSubUnsubscribeAllResponse(response);
 
-            case "subscriptions":
-                return new PubSubListSubscriptionsResponse(response);
+                case "subscriptions":
+                    return new PubSubListSubscriptionsResponse(response);
 
-            case "pub":
-                return new PubSubPublishAckResponse(response);
+                case "pub":
+                    return new PubSubPublishAckResponse(response);
 
-            default:
-                throw new PubSubException("Unknown/Unhandled Response from Server");
+                default:
+                    throw new PubSubResponseParseException("Unknown Response From Server", response);
+            }
+        }
+        catch(JSONException e) {
+            throw new PubSubResponseParseException("Could Not Parse Response From Server", response);
         }
     }
 

@@ -1,6 +1,6 @@
 package com.gambit.sdk.pubsub.responses.errors;
 
-import com.gambit.sdk.pubsub.exceptions.PubSubException;
+import com.gambit.sdk.pubsub.exceptions.*;
 
 import java.util.Optional;
 
@@ -41,36 +41,41 @@ public class PubSubErrorResponse {
      */
     private Long sequence;
 
-    public static PubSubErrorResponse create(JSONObject response) throws JSONException, PubSubException {
-        if (!response.has("seq")) {
-            return new PubSubInvalidRequestResponse(response);
-        }
-
-        switch(response.getInt("code")) {
-            case 500:
-                return new PubSubErrorResponse(response);
-
-            case 400:
-                return new PubSubInvalidFormatResponse(response);
-
-            case 401:
-                return new PubSubIncorrectPermissionsResponse(response);
-
-            case 404: {
-                switch(response.getString("action")) {
-                    case "unsubscribe":
-                        return new PubSubSubscriptionNotFoundResponse(response);
-
-                    case "pub":
-                        return new PubSubNoSubscriptionsResponse(response);
-
-                    default:
-                        throw new PubSubException("Unknown Error Response from Server");
-                }
+    public static PubSubErrorResponse create(JSONObject response) throws PubSubException {
+        try {
+            if (!response.has("seq")) {
+                return new PubSubInvalidRequestResponse(response);
             }
-            
-            default:
-                throw new PubSubException("Unknown Error Response from Server");
+
+            switch(response.getInt("code")) {
+                case 500:
+                    return new PubSubErrorResponse(response);
+
+                case 400:
+                    return new PubSubInvalidFormatResponse(response);
+
+                case 401:
+                    return new PubSubIncorrectPermissionsResponse(response);
+
+                case 404: {
+                    switch(response.getString("action")) {
+                        case "unsubscribe":
+                            return new PubSubSubscriptionNotFoundResponse(response);
+
+                        case "pub":
+                            return new PubSubNoSubscriptionsResponse(response);
+
+                        default:
+                            throw new PubSubResponseParseException("Unknown Error Response from Server", response);
+                    }
+                }
+                
+                default:
+                    throw new PubSubResponseParseException("Unknown Error Response from Server", response);
+            }
+        }
+        catch(JSONException e) {
+            throw new PubSubResponseParseException("Could Not Parse Error Response from Server", response);
         }
     }
 

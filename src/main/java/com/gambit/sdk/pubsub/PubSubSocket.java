@@ -231,7 +231,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      * Used for testing purposes
      * @param server The server to which to send messages
      */
-    protected PubSubSocket(RemoteEndpoint.Async server) {
+    protected PubSubSocket(RemoteEndpoint.Async server) {   
         this();
         this.server = server;
     }
@@ -403,12 +403,12 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
             }
             else {
-                PubSubException e = new PubSubException("There was no socket container implementation found.");; 
+                PubSubException e = new PubSubSocketImplementationException("There was no socket container implementation found."); 
                 throw new CompletionException(e);
             }
 
             if(websocketSession == null) {
-                PubSubException e = new PubSubException("Could not instantiate connection to server.");
+                PubSubException e = new PubSubSocketConnectionException("Could not instantiate connection to server.");
                 throw new CompletionException(e);
             }
         });
@@ -578,9 +578,15 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                 }
             }
             else if(!json.has("seq")) {
-                // This should never happen, but if it does, propogate to error handle if provided.
-                if(errorHandler != null) {
-                    errorHandler.onError(new PubSubException(json.toString()));
+                try {
+                    if(errorResponseHandler != null) {
+                        errorResponseHandler.onErrorResponse(PubSubErrorResponse.create(json));
+                    }
+                }
+                catch(PubSubException e) {
+                    if(errorHandler != null) {
+                        errorHandler.onError(e);
+                    }
                 }
             }
             else if(json.getInt("code") != 200) {
@@ -626,7 +632,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
                     }
 
                     if(errorHandler != null) {
-                        errorHandler.onError(new PubSubException(json.toString()));
+                        errorHandler.onError(new PubSubException("Could not parse response: " + json.toString()));
                     }
                 }
                 

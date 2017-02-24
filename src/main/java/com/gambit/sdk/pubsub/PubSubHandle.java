@@ -73,7 +73,7 @@ public class PubSubHandle {
                     outcome.complete(uuidResponse.getSessionUuid());
                 }
                 else {
-                    outcome.completeExceptionally(new PubSubException("Invalid Response to Session UUID"));
+                    outcome.completeExceptionally(new PubSubResponseTypeException("Invalid Response to Session UUID", response));
                 }
             })
             .exceptionally((error) -> {
@@ -109,7 +109,7 @@ public class PubSubHandle {
                     outcome.complete(subResponse.getChannels());
                 }
                 else {
-                    outcome.completeExceptionally(new PubSubException("Invalid Response to Subscribing"));
+                    outcome.completeExceptionally(new PubSubResponseTypeException("Invalid Response to Subscribing", response));
                 }
             })
             .exceptionally((error) -> {
@@ -143,7 +143,7 @@ public class PubSubHandle {
                     outcome.complete(unsubResponse.getChannels());
                 }
                 else {
-                    outcome.completeExceptionally(new PubSubException("Invalid Response to Unsubscribing"));
+                    outcome.completeExceptionally(new PubSubResponseTypeException("Invalid Response to Unsubscribing", response));
                 }
             })
             .exceptionally((error) -> {
@@ -174,7 +174,7 @@ public class PubSubHandle {
                     outcome.complete(unsubAllResponse.getChannels());
                 }
                 else {
-                    outcome.completeExceptionally(new PubSubException("Invalid Response to Unsubscribing from All Channels"));
+                    outcome.completeExceptionally(new PubSubResponseTypeException("Invalid Response to Unsubscribe All", response));
                 }
             })
             .exceptionally((error) -> {
@@ -205,7 +205,7 @@ public class PubSubHandle {
                     outcome.complete(listResponse.getChannels());
                 }
                 else {
-                    outcome.completeExceptionally(new PubSubException("Invalid Response to Listing Subscriptions"));
+                    outcome.completeExceptionally(new PubSubResponseTypeException("Invalid Response to List Subscriptions", response));
                 }
             })
             .exceptionally((error) -> {
@@ -311,7 +311,7 @@ public class PubSubHandle {
                 outcome.complete(pubResponse.getMessageId());
             }
             else {
-                outcome.completeExceptionally(new PubSubException("Invalid Response to Publishing"));
+                outcome.completeExceptionally(new PubSubResponseTypeException("Invalid Response to Publish With Ack", response));
             }
         })
         .exceptionally((error) -> {
