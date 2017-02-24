@@ -82,11 +82,7 @@ public class PubSubErrorResponse {
     /**
      * Fills an error response with information about the error.
      *
-     * @param seq Sequence number that precipitated the error, if any
-     * @param code Code representing the error that occurred, if any
-     * @param action Action that precipitated the error, if any
-     * @param message Description of the error, if any
-     * @param details Details about the error, if any
+     * @param response JSON object representing the error returned from the server
      */
     public PubSubErrorResponse(JSONObject response) throws JSONException {
         if(response.has("seq")) {
@@ -130,7 +126,7 @@ public class PubSubErrorResponse {
     /**
      * Provides the sequence number that precipitated the error response from the server.
      *
-     * @return Optional<Long> Filled with the sequence number, if it exists
+     * @return {@code Optional<String>} Filled with the sequence number, if it exists
      */
     public Optional<Long> getSequence() {
         return Optional.ofNullable(sequence);
@@ -139,7 +135,7 @@ public class PubSubErrorResponse {
     /**
      * Provides the details contained in the error response from the server.
      *
-     * @return Optional<string> Filled with the details message, if it exists
+     * @return {@code Optional<String>} Filled with the details message, if it exists
      */
     public Optional<String> getDetails() {
         return Optional.ofNullable(details);
@@ -148,7 +144,7 @@ public class PubSubErrorResponse {
     /**
      * Provides the action that precipitated the error response from the server.
      *
-     * @return Optional<String> Filled with the action from the error message, if it exists
+     * @return {@code Optional<String>} Filled with the action from the error message, if it exists
      */
     public Optional<String> getAction() {
         return Optional.ofNullable(action);
@@ -157,7 +153,7 @@ public class PubSubErrorResponse {
     /**
      * Provides the message contained in the error response from the server.
      *
-     * @return Optional<String> Filled with the message of the error, if it exists
+     * @return {@code Optional<String>} Filled with the message of the error, if it exists
      */
     public Optional<String> getMessage() {
         return Optional.ofNullable(message);

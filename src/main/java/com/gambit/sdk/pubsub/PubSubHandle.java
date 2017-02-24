@@ -256,7 +256,6 @@ public class PubSubHandle {
      *
      * @param channel Name of the channel on which to publish the message.
      * @param message Content of the message to be publish on the given channel.
-     * @param handler Error handler called if <em>sending</em> fails.
      * @return {@code CompletableFuture<Long>} Completes with sequence number of record sent on a successful send. 
      */
     public CompletableFuture<Long> publish(String channel, String message) {
@@ -379,7 +378,7 @@ public class PubSubHandle {
     /**
      * Registers a handler for whenever an error response is received from ther server.
      *
-     * @param errorHandler The {@link PubSubErrorHandler} that should be registered
+     * @param errorResponseHandler The {@link PubSubErrorHandler} that should be registered
      */
     public void onErrorResponse(PubSubErrorResponseHandler errorResponseHandler) {
         socket.setErrorResponseHandler(errorResponseHandler);

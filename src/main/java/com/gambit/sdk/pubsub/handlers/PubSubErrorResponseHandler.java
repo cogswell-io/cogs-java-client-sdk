@@ -10,7 +10,7 @@ public interface PubSubErrorResponseHandler {
     /**
      * Invoked as the initial call when shutting down an instance of {@link com.gambit.sdk.pubsub.PubSubSocket}.
      *
-     * @param error Error that caused the invocation of the handler.
+     * @param errorResponse Error response that caused the invocation of the handler.
      */
     void onErrorResponse(PubSubErrorResponse errorResponse);
 }

@@ -34,7 +34,7 @@ public class PubSubMessageRecord
     /**
      * Creates the PubSubMessageRecord filled in with info from the message 
      * 
-     * @param message The message to parse
+     * @param jsonObj The JSONObject representing the message record
      */
     public PubSubMessageRecord(JSONObject jsonObj) throws JSONException {
         message = jsonObj.getString("msg");

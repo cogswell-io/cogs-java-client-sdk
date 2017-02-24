@@ -312,7 +312,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
      *
      * @param sequence Sequence number of the message
      * @param json The request to send to the Pub/Sub server
-     * @param pubSubErrorHandler The handler that is called if some exception or error is thrown
+     * @param errorResponseHandler The handler that is called if an error esponse is received from the server 
      * @param handler The callback to initiate when sending is completed.
      */
     protected void sendPublish(long sequence, JSONObject json, PubSubErrorResponseHandler errorResponseHandler, SendHandler handler) {
@@ -366,7 +366,7 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
 
     /**
      * This method (used for testing purposes only) drops  underlying connection and reconnects with delay of msDelay milliseconds. 
-     * @param msDelay Delay in milliseconds to wait before attempting a reconnect
+     * @param dropOptions PubSubDropConnectionOptions provided to fine-tune some of the behavior when dropping the connection
      */
     protected void dropConnection(PubSubDropConnectionOptions dropOptions) {
         try {
