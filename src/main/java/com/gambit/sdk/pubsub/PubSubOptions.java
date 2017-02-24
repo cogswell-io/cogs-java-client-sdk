@@ -2,6 +2,8 @@ package com.gambit.sdk.pubsub;
 
 import java.util.UUID;
 
+import java.time.Duration;
+
 /**
  * Holds initialization options to use when first connect to Cogswell Pub/Sub
  */
@@ -31,7 +33,7 @@ public class PubSubOptions {
      * Initializes this PubSubOptions with all default values
      */
     private PubSubOptions() {
-      this("wss://api.cogswell.io/pubsub", true, 30000L, null);
+      this("wss://api.cogswell.io/pubsub", true, Duration.ofMinutes(5), null);
     }
 
     /**
@@ -39,19 +41,19 @@ public class PubSubOptions {
      */
     public static final PubSubOptions DEFAULT_OPTIONS = new PubSubOptions();
 
-    /**
+  /**
      * Initializes this PubSubOptions with the given options, filling in null values with defaults.
      *
      * @param url            URL to which to connect (Deafult: "wss://api.cogswell.io/pubsub").
      * @param autoReconnect  True if connection should attempt to reconnect when disconnected (Default: true).
-     * @param connectTimeout Time, in milliseconds, before connection should timeout (Default: 30000).
+     * @param connectTimeout Time, as a duration, before connection should timeout (Default: 30000).
      * @param sessionUuid    UUID of session to restore, if requested (Default: null). 
      */
-    public PubSubOptions(String url, Boolean autoReconnect, Long connectTimeout, UUID sessionUuid) {
+    public PubSubOptions(String url, Boolean autoReconnect, Duration connectTimeout, UUID sessionUuid) {
       this.url = (url == null) ? "wss://api.cogswell.io/pubsub" : url;
       this.autoReconnect = (autoReconnect == null) ? true : autoReconnect;
-      this.connectTimeout = (connectTimeout == null) ? 30000 : connectTimeout;
       this.sessionUuid = sessionUuid;
+      this.connectTimeout = (connectTimeout == null) ? 30000 : connectTimeout.toMillis();
     }
 
     /**
