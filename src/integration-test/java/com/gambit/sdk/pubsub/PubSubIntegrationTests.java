@@ -733,4 +733,79 @@ public class PubSubIntegrationTests {
             e.printStackTrace();
         }
     }
+
+    @Test
+    public void testPublishAndReceiveAfterReconnect() {
+        try {
+            PubSubOptions options = new PubSubOptions(testServer, null, null, null);
+            PubSubSDK pubsubSDK = PubSubSDK.getInstance();
+
+            AtomicReference<UUID> messageId = new AtomicReference<>(UUID.randomUUID());
+            AtomicReference<UUID> sessionId = new AtomicReference<>(UUID.randomUUID());
+            CountDownLatch received = new CountDownLatch(1);
+            CountDownLatch signal = new CountDownLatch(1);
+            String channel = "Test Channel: Dead Beef";
+            String message = "Test the Reconnect & Publish!!!";
+
+            pubsubSDK.connect(primaryPermissions, options)
+                .thenComposeAsync((handle) -> {
+                    pubsubHandle = handle;
+
+                    pubsubHandle.onReconnect(() -> {
+                        pubsubHandle.publish(channel, message)
+                            .thenAcceptAsync(seq -> {
+                                try {
+                                    boolean completed = received.await(2, TimeUnit.SECONDS);
+                                    assertTrue("The test timed out. No message received.", completed);
+                                }
+                                catch(InterruptedException e) {
+                                    isError = true;
+                                    errorMessage = e.getMessage();
+                                }
+                                catch(AssertionError e) {
+                                    isError = true;
+                                    errorMessage = e.getMessage();
+                                }
+
+                                signal.countDown();
+                            })
+                            .exceptionally((error) -> {
+                                isError = true;
+                                errorMessage = error.getMessage();
+                                signal.countDown();
+                                return null;
+                            });
+                    });
+
+                    return pubsubHandle.subscribe(channel, (record) -> received.countDown());
+                })
+                .thenComposeAsync((subscriptions) -> {
+                    return pubsubHandle.getSessionUuid();
+                })
+                .thenAcceptAsync((uuid) -> {
+                    sessionId.set(uuid);
+                    pubsubHandle.dropConnection(new PubSubDropConnectionOptions(0));
+                })
+                .exceptionally((error) -> {
+                    isError = true;
+                    errorMessage = error.getMessage();
+                    signal.countDown();
+                    return null;
+                });
+
+            try {
+                boolean completed = signal.await(5, TimeUnit.SECONDS);
+
+                assertTrue("The test timed out before failing", completed);
+                assertFalse("An error occurred: " + errorMessage, isError);
+            }
+            catch(InterruptedException e) {
+                fail("INTERRUPTED WHILE WAITING FOR COUNTDOWN");
+            }
+        }
+        catch(Throwable ex) {
+            fail("There was an exception thrown: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
 }
