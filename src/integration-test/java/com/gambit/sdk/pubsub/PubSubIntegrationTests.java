@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Before;
+import org.junit.After;
 import org.junit.Test;
 
 public class PubSubIntegrationTests {
@@ -46,6 +47,14 @@ public class PubSubIntegrationTests {
 
     @Before
     public void setupBeforeEach() {
+        pubsubHandle = null;
+        secondHandle = null;
+        errorMessage = "";
+        isError = false;
+    }
+
+    @After
+    public void tearDownAfterEach() {
         pubsubHandle = null;
         secondHandle = null;
         errorMessage = "";
@@ -119,7 +128,6 @@ public class PubSubIntegrationTests {
             }
         }
         catch(Throwable e) {
-            System.out.println("Exception Class: " + e.getClass());
             fail("There was an exception thrown: " + e.getMessage());
             e.printStackTrace();
         }
@@ -721,7 +729,6 @@ public class PubSubIntegrationTests {
             }
         }
         catch(Throwable e) {
-            System.out.println("Exception Class: " + e.getClass());
             fail("There was an exception thrown: " + e.getMessage());
             e.printStackTrace();
         }

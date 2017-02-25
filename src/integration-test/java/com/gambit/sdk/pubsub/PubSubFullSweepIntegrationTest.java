@@ -116,6 +116,7 @@ public class PubSubFullSweepIntegrationTest {
             firstHealthMessage.countDown();
         }
         else {
+            healthMessageId = record.getId();
             secondHealthMessage.countDown();
         }
     }
@@ -165,7 +166,6 @@ public class PubSubFullSweepIntegrationTest {
             })
             .thenComposeAsync((uuid) -> {
                 try {
-                    System.out.println("UUID: " + uuid);
                     boolean completed = secondHealthMessage.await(2, TimeUnit.SECONDS);
                     
                     if(!completed) {
@@ -338,8 +338,6 @@ public class PubSubFullSweepIntegrationTest {
                         waitToFinish.countDown();
                     }
 
-                    System.out.println("Before Dropping: " + subscriptions);
-
                     return pubsubHandle.publishWithAck(testChannels.get("health"), healthMessage);
                 })
                 .thenComposeAsync((uuid) -> {
@@ -393,7 +391,6 @@ public class PubSubFullSweepIntegrationTest {
             }
         }
         catch(Throwable e) {
-            ;
             fail("There was an exception thrown: " + e.getMessage());
             e.printStackTrace();
         }
