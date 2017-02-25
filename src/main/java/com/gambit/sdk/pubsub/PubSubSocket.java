@@ -396,7 +396,6 @@ public class PubSubSocket extends Endpoint implements MessageHandler.Whole<Strin
             if(container != null) {
                 try {
                     websocketSession = container.connectToServer(this, config, URI.create(options.getUrl()));
-                    //server = websocketSession.getAsyncRemote();
                 }
                 catch(Exception e) {
                     throw new CompletionException(e);

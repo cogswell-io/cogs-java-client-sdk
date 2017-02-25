@@ -71,6 +71,8 @@ public class PubSubFullSweepIntegrationTest {
     private static UUID messageId;
     private static UUID sessionId;
 
+    private static UUID healthMessageId;
+
     private static Map<String, String> testChannels;
     private static List<String> channels;
 
@@ -78,7 +80,8 @@ public class PubSubFullSweepIntegrationTest {
     private static String healthMessage = "Feedback is a useful mechanism";
 
     private static CountDownLatch waitToFinish = new CountDownLatch(1);
-    private static CountDownLatch receivedHealth = new CountDownLatch(1);
+    private static CountDownLatch firstHealthMessage = new CountDownLatch(1);
+    private static CountDownLatch secondHealthMessage = new CountDownLatch(1);
 
     public void bookHandler(PubSubMessageRecord record) {
         assertEquals(
@@ -108,7 +111,13 @@ public class PubSubFullSweepIntegrationTest {
         );
 
         messageId = record.getId();
-        receivedHealth.countDown();
+
+        if(firstHealthMessage.getCount() != 0) {
+            firstHealthMessage.countDown();
+        }
+        else {
+            secondHealthMessage.countDown();
+        }
     }
 
     public void timeHandler(PubSubMessageRecord record) {
@@ -118,12 +127,8 @@ public class PubSubFullSweepIntegrationTest {
     //////////////////////////// HANDLER DEFINITIONS ////////////////////////////
 
     public void onReconnect() {
-        ;
-
         pubsubHandle.getSessionUuid()
             .thenComposeAsync(uuid -> {
-                ;
-
                 try {
                     assertEquals(
                         "The previous session should match the restored session...",
@@ -140,8 +145,6 @@ public class PubSubFullSweepIntegrationTest {
                 return pubsubHandle.listSubscriptions();
             })
             .thenComposeAsync(subscriptions -> {
-                ;
-
                 try {
                     Collections.sort(subscriptions);
                     Collections.sort(channels);
@@ -158,10 +161,37 @@ public class PubSubFullSweepIntegrationTest {
                     waitToFinish.countDown();
                 }
 
+                return pubsubHandle.publishWithAck(testChannels.get("health"), healthMessage);
+            })
+            .thenComposeAsync((uuid) -> {
+                try {
+                    System.out.println("UUID: " + uuid);
+                    boolean completed = secondHealthMessage.await(2, TimeUnit.SECONDS);
+                    
+                    if(!completed) {
+                        isError = true;
+                        errorMessage = "Did not receive the published health message second time...";
+                    }
+                    else {
+                        assertEquals(
+                            "The published health message and the acknowledged message should be the same...",
+                            healthMessageId.toString(),
+                            uuid.toString()
+                        );
+                    }
+                }
+                catch(InterruptedException e) {
+                    isError = true;
+                    errorMessage = "Interrupted waiting for the published health message: " + e.getMessage();
+                }
+                catch(AssertionError ex) {
+                    isError = true;
+                    errorMessage = "Published healht message problem: " + ex.getMessage();
+                }
+
                 return pubsubHandle.close();
             })
             .thenAcceptAsync(voided -> {
-                ;
                 waitToFinish.countDown();
             })
             .exceptionally(error -> {
@@ -308,11 +338,13 @@ public class PubSubFullSweepIntegrationTest {
                         waitToFinish.countDown();
                     }
 
+                    System.out.println("Before Dropping: " + subscriptions);
+
                     return pubsubHandle.publishWithAck(testChannels.get("health"), healthMessage);
                 })
                 .thenComposeAsync((uuid) -> {
                     try {
-                        boolean completed = receivedHealth.await(2, TimeUnit.SECONDS);
+                        boolean completed = firstHealthMessage.await(2, TimeUnit.SECONDS);
                         
                         if(!completed) {
                             isError = true;
